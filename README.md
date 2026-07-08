@@ -147,6 +147,28 @@ Hibernate 5 ships **no SQLite dialect**, so SQLite isn't a drop-in here.
 - Alternative: Hibernate 6 ships an official `SQLiteDialect` (community package), but
   that means Spring Boot 3 / Java 17 — a different stack than requested.
 
+### Why is Kotlin on the classpath at all? DGS is used from Java, right?
+Yes — your code here is 100% Java and the DGS API is designed to be used from Java.
+But the DGS framework itself is *implemented* in Kotlin, so its jars are Kotlin
+bytecode and need `kotlin-stdlib` at runtime, exactly like any other transitive
+library dependency (think slf4j or Jackson). You never write or compile Kotlin.
+The only reason it's visible in our POM is that Spring Boot's BOM also manages the
+`kotlin-stdlib` version (for projects that do use Kotlin), and Boot 2.4.2 pins an
+older one (1.4.21) than DGS 4.9's bytecode requires (1.5.x) — hence the one-line
+`<kotlin.version>` override.
+
+### Future upgrade path: Spring Boot 2.7 + DGS 5.x
+The intended pairing is Boot 2.6/2.7 with the DGS 5.x line (latest is 5.6.2; DGS 6
+requires Boot 3). When you upgrade:
+
+1. Bump the parent to `spring-boot-starter-parent:2.7.x` and `dgs.version` to 5.6.x.
+2. Re-check the Kotlin override: Boot 2.7 manages Kotlin 1.6.21, while late DGS 5.x
+   is built against Kotlin 1.7.x — so the same one-line `<kotlin.version>` override
+   (set to what that DGS release was built with) likely stays, just with new numbers.
+3. DGS 5.x moves to graphql-java 19/20 (via its BOM, as here). The APIs used in
+   `graphql-infrastructure` (`@DgsCodeRegistry`, `FieldCoordinates`, `Coercing`,
+   `@DgsScalar`) are stable across 4.x → 5.x, so no code changes are expected.
+
 ### 5. Building/running JDK
 Sources target **Java 11** (`java.version=11`). Boot 2.4.2 + Hibernate 5.4 predate
 recent JDKs, so run it on JDK 11 for fidelity (it happens to build and pass tests on
