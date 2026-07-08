@@ -25,6 +25,7 @@
 
     <modules>
         <module>graphql-infrastructure</module>
+        <module>graphql-playground</module>
         <module>person-service</module>
     </modules>
 
@@ -55,6 +56,11 @@
             <dependency>
                 <groupId>com.example</groupId>
                 <artifactId>graphql-infrastructure</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.example</groupId>
+                <artifactId>graphql-playground</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

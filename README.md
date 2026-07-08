@@ -16,6 +16,8 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
 │       ├── graphql.scalars    Date / DateTime scalars
 │       ├── exception          EntityNotFoundException (framework-neutral)
 │       └── persistence        BaseEntity (id + audit timestamps)
+├── graphql-playground         <- domain-agnostic, reusable
+│   └── com.example.playground Self-hosted playground UI at /playground (no CDN)
 └── person-service             <- concrete Person domain, runnable Spring Boot app
     └── com.example.person
         ├── graphql.query      PersonByIdResolver, AllPersonsResolver, PersonsByCityResolver
@@ -68,9 +70,32 @@ mvn package          # build + run integration tests
 java -jar person-service/target/person-service-1.0.0-SNAPSHOT.jar
 ```
 
-- GraphiQL UI: http://localhost:8080/graphiql
+- **Playground UI: http://localhost:8080/playground** (self-hosted, works offline)
+- GraphiQL UI: http://localhost:8080/graphiql (bundled with DGS, loads assets from CDN)
 - GraphQL endpoint: `POST http://localhost:8080/graphql`
 - H2 console: http://localhost:8080/h2-console (JDBC URL `jdbc:h2:mem:persondb`, user `sa`)
+
+### The playground clients
+
+DGS does ship a playground: the starter serves **GraphiQL at `/graphiql`** out of the
+box. However, that page is only a thin HTML shell that loads all of its JavaScript/CSS
+from the unpkg CDN — on a machine without internet access (or behind a strict proxy)
+it renders as a blank page.
+
+The **`graphql-playground` module** therefore provides a fully self-hosted playground
+at **`/playground`**: a single self-contained HTML page served by the app itself, no
+external requests. It introspects whatever schema the application exposes (so it is
+domain-agnostic and reusable), lists every query/mutation in a sidebar, and clicking
+one inserts a ready-to-run operation with placeholder arguments and a full selection
+set. Run with the button or Ctrl+Enter; a variables pane accepts JSON.
+
+Configuration (all optional):
+
+| Property                       | Default       | Purpose                          |
+|--------------------------------|---------------|----------------------------------|
+| `graphql.playground.enabled`   | `true`        | Set `false` to disable the page  |
+| `graphql.playground.path`      | `/playground` | Where the UI is served           |
+| `graphql.playground.endpoint`  | `/graphql`    | GraphQL endpoint the UI targets  |
 
 Three demo persons are seeded at startup. Example query:
 

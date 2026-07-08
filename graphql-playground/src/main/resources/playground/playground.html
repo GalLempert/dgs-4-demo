@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GraphQL Playground</title>
+<style>
+  :root {
+    --bg: #1e222a; --panel: #262b35; --border: #3a4150; --text: #e6e9ef;
+    --muted: #9aa4b5; --accent: #e10098; --accent2: #61dafb; --ok: #7ee787;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; flex-direction: column;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--border);
+  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  header h1 span { color: var(--accent); }
+  header .endpoint { color: var(--muted); font-size: 12px; font-family: monospace; }
+  header .spacer { flex: 1; }
+  button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 4px;
+    padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  button.secondary { background: #3a4150; }
+  button:hover { filter: brightness(1.15); }
+  main { flex: 1; display: flex; min-height: 0; }
+  #sidebar {
+    width: 280px; min-width: 200px; overflow-y: auto;
+    background: var(--panel); border-right: 1px solid var(--border); padding: 10px;
+  }
+  #sidebar h2 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted); margin: 12px 4px 6px;
+  }
+  .op {
+    display: block; width: 100%; text-align: left; background: none; border: 0;
+    color: var(--accent2); font-family: monospace; font-size: 12.5px;
+    padding: 4px 6px; border-radius: 4px; cursor: pointer; font-weight: 400;
+  }
+  .op:hover { background: #303748; }
+  .op small { color: var(--muted); }
+  #editors { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #query {
+    flex: 3; width: 100%; resize: none; border: 0; outline: none;
+    background: var(--bg); color: var(--text);
+    font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 13px;
+    padding: 12px; line-height: 1.5;
+  }
+  #variables-wrap { flex: 1; display: flex; flex-direction: column; border-top: 1px solid var(--border); }
+  #variables-wrap label { font-size: 11px; color: var(--muted); padding: 6px 12px 0; text-transform: uppercase; letter-spacing: .08em; }
+  #variables {
+    flex: 1; width: 100%; resize: none; border: 0; outline: none;
+    background: var(--bg); color: var(--text);
+    font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 13px; padding: 8px 12px;
+  }
+  #response-wrap {
+    flex: 1; min-width: 0; border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  #response {
+    flex: 1; overflow: auto; margin: 0; padding: 12px;
+    font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 13px; line-height: 1.5;
+    white-space: pre-wrap; word-break: break-word; color: var(--ok);
+  }
+  #response.error { color: #ff7b72; }
+  #status { padding: 4px 12px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<header>
+  <h1>GraphQL <span>Playground</span></h1>
+  <span class="endpoint" id="endpoint-label"></span>
+  <div class="spacer"></div>
+  <button class="secondary" id="prettify">Prettify</button>
+  <button id="run">&#9654; Run &nbsp;(Ctrl+Enter)</button>
+</header>
+<main>
+  <nav id="sidebar">
+    <h2>Queries</h2>
+    <div id="queries"><span class="op"><small>loading schema…</small></span></div>
+    <h2>Mutations</h2>
+    <div id="mutations"></div>
+  </nav>
+  <section id="editors">
+    <textarea id="query" spellcheck="false" placeholder="# Pick an operation on the left, or type a query here"></textarea>
+    <div id="variables-wrap">
+      <label for="variables">Query variables (JSON)</label>
+      <textarea id="variables" spellcheck="false">{}</textarea>
+    </div>
+  </section>
+  <section id="response-wrap">
+    <pre id="response">// Response will appear here</pre>
+    <div id="status">Idle</div>
+  </section>
+</main>
+<script>
+(function () {
+  'use strict';
+  var ENDPOINT = '__GRAPHQL_ENDPOINT__';
+  document.getElementById('endpoint-label').textContent = ENDPOINT;
+
+  var queryEl = document.getElementById('query');
+  var varsEl = document.getElementById('variables');
+  var respEl = document.getElementById('response');
+  var statusEl = document.getElementById('status');
+
+  function gql(query, variables) {
+    return fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: query, variables: variables || {} })
+    }).then(function (r) { return r.json(); });
+  }
+
+  // ---------------------------------------------------------------- run
+  function run() {
+    var variables;
+    try {
+      variables = varsEl.value.trim() ? JSON.parse(varsEl.value) : {};
+    } catch (e) {
+      respEl.className = 'error';
+      respEl.textContent = 'Query variables are not valid JSON: ' + e.message;
+      return;
+    }
+    statusEl.textContent = 'Running…';
+    var started = Date.now();
+    gql(queryEl.value, variables).then(function (json) {
+      respEl.className = json.errors ? 'error' : '';
+      respEl.textContent = JSON.stringify(json, null, 2);
+      statusEl.textContent = 'Done in ' + (Date.now() - started) + ' ms';
+    }).catch(function (e) {
+      respEl.className = 'error';
+      respEl.textContent = 'Request failed: ' + e.message;
+      statusEl.textContent = 'Failed';
+    });
+  }
+  document.getElementById('run').addEventListener('click', run);
+  document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(); }
+  });
+
+  // Tab inserts two spaces inside the editors
+  [queryEl, varsEl].forEach(function (el) {
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        var s = el.selectionStart;
+        el.value = el.value.slice(0, s) + '  ' + el.value.slice(el.selectionEnd);
+        el.selectionStart = el.selectionEnd = s + 2;
+      }
+    });
+  });
+
+  document.getElementById('prettify').addEventListener('click', function () {
+    try { varsEl.value = JSON.stringify(JSON.parse(varsEl.value || '{}'), null, 2); } catch (e) { /* leave as-is */ }
+  });
+
+  // ------------------------------------------------- schema introspection
+  var INTROSPECTION =
+    'query IntrospectForPlayground { __schema {' +
+    '  queryType { name } mutationType { name }' +
+    '  types { kind name enumValues { name }' +
+    '    inputFields { name type { ...T } }' +
+    '    fields(includeDeprecated: true) { name args { name type { ...T } } type { ...T } }' +
+    '  }' +
+    '} }' +
+    'fragment T on __Type { kind name ofType { kind name ofType { kind name ofType { kind name } } } }';
+
+  var typesByName = {};
+
+  function unwrap(type) {
+    while (type && !type.name) { type = type.ofType; }
+    return type || { kind: 'SCALAR', name: 'String' };
+  }
+  function isNonNull(type) { return type && type.kind === 'NON_NULL'; }
+
+  function placeholderFor(typeRef, depth) {
+    var named = unwrap(typeRef);
+    var full = typesByName[named.name] || named;
+    var wrapped = typeRef;
+    while (wrapped && wrapped.kind === 'NON_NULL') { wrapped = wrapped.ofType; }
+    if (wrapped && wrapped.kind === 'LIST') {
+      return '[' + placeholderFor(wrapped.ofType, depth) + ']';
+    }
+    switch (named.name) {
+      case 'Int': return '0';
+      case 'Float': return '0.0';
+      case 'Boolean': return 'true';
+      case 'ID': return '"1"';
+      case 'String': return '""';
+      case 'Date': return '"2000-01-01"';
+      case 'DateTime': return '"2000-01-01T12:00:00"';
+    }
+    if (full.kind === 'ENUM' && full.enumValues && full.enumValues.length) {
+      return full.enumValues[0].name;
+    }
+    if (full.kind === 'INPUT_OBJECT' && depth < 4) {
+      var parts = (full.inputFields || [])
+        .filter(function (f) { return depth < 2 || isNonNull(f.type); })
+        .map(function (f) { return f.name + ': ' + placeholderFor(f.type, depth + 1); });
+      return '{ ' + parts.join(', ') + ' }';
+    }
+    return '""';
+  }
+
+  function selectionSetFor(typeRef, depth, indent) {
+    var named = unwrap(typeRef);
+    var full = typesByName[named.name];
+    if (!full || !full.fields) { return ''; }  // scalar or enum: no selection set
+    var pad = new Array(indent + 1).join('  ');
+    var lines = full.fields.map(function (f) {
+      var childNamed = unwrap(f.type);
+      var childFull = typesByName[childNamed.name];
+      if (childFull && childFull.fields) {
+        if (depth >= 2) { return null; }  // stop descending, avoid cycles
+        var childSel = selectionSetFor(f.type, depth + 1, indent + 1);
+        return childSel ? pad + '  ' + f.name + ' ' + childSel : null;
+      }
+      return pad + '  ' + f.name;
+    }).filter(Boolean);
+    if (!lines.length) { return ''; }
+    return '{\n' + lines.join('\n') + '\n' + pad + '}';
+  }
+
+  function skeletonFor(opKind, field) {
+    var args = (field.args || []).map(function (a) {
+      return a.name + ': ' + placeholderFor(a.type, 0);
+    });
+    var argStr = args.length ? '(' + args.join(', ') + ')' : '';
+    var selection = selectionSetFor(field.type, 0, 1);
+    return opKind + ' {\n  ' + field.name + argStr + (selection ? ' ' + selection : '') + '\n}';
+  }
+
+  function renderOps(containerId, opKind, rootType) {
+    var container = document.getElementById(containerId);
+    container.innerHTML = '';
+    if (!rootType || !rootType.fields) {
+      container.innerHTML = '<span class="op"><small>none</small></span>';
+      return;
+    }
+    rootType.fields.filter(function (field) {
+      return field.name.charAt(0) !== '_';  // hide internals like federation's _service
+    }).forEach(function (field) {
+      var btn = document.createElement('button');
+      btn.className = 'op';
+      var argNames = (field.args || []).map(function (a) { return a.name; }).join(', ');
+      btn.innerHTML = field.name + (argNames ? ' <small>(' + argNames + ')</small>' : '');
+      btn.title = 'Insert a ready-to-run ' + opKind;
+      btn.addEventListener('click', function () {
+        queryEl.value = skeletonFor(opKind, field);
+        queryEl.focus();
+      });
+      container.appendChild(btn);
+    });
+  }
+
+  gql(INTROSPECTION).then(function (json) {
+    var schema = json.data.__schema;
+    schema.types.forEach(function (t) { typesByName[t.name] = t; });
+    var queryType = schema.queryType && typesByName[schema.queryType.name];
+    var mutationType = schema.mutationType && typesByName[schema.mutationType.name];
+    renderOps('queries', 'query', queryType);
+    renderOps('mutations', 'mutation', mutationType);
+    if (queryType && queryType.fields && queryType.fields.length && !queryEl.value) {
+      queryEl.value = skeletonFor('query', queryType.fields[0]);
+    }
+    statusEl.textContent = 'Schema loaded - pick an operation on the left and hit Run';
+  }).catch(function (e) {
+    statusEl.textContent = 'Schema introspection failed: ' + e.message;
+  });
+})();
+</script>
+</body>
+</html>
