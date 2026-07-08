@@ -268,6 +268,12 @@ The only reason it's visible in our POM is that Spring Boot's BOM also manages t
 older one (1.4.21) than DGS 4.9's bytecode requires (1.5.x) — hence the one-line
 `<kotlin.version>` override.
 
+### Performance impact of future upgrades
+
+Estimated per-milestone performance impact (Java LTS steps, Spring Boot 3/4,
+DGS 5→12) is documented in [docs/UPGRADE-PERFORMANCE.md](docs/UPGRADE-PERFORMANCE.md),
+including the recommended order and how to verify each step with the k6 suite.
+
 ### Future upgrade path: Spring Boot 2.7 + DGS 5.x
 The intended pairing is Boot 2.6/2.7 with the DGS 5.x line (latest is 5.6.2; DGS 6
 requires Boot 3). When you upgrade:
