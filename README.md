@@ -268,6 +268,14 @@ The only reason it's visible in our POM is that Spring Boot's BOM also manages t
 older one (1.4.21) than DGS 4.9's bytecode requires (1.5.x) — hence the one-line
 `<kotlin.version>` override.
 
+### DAL alternatives (avoiding Hibernate 6)
+
+If the Boot 3 upgrade should not bring Hibernate 6 along, the data access layer can
+be swapped with contained effort (persistence touches only six files by design).
+[docs/DAL-ALTERNATIVES.md](docs/DAL-ALTERNATIVES.md) compares Spring Data JDBC,
+MyBatis, jOOQ, JDBI, plain JdbcTemplate and EclipseLink across features, ease of use,
+community, popularity and performance — with a recommendation.
+
 ### Performance impact of future upgrades
 
 Estimated per-milestone performance impact (Java LTS steps, Spring Boot 3/4,
