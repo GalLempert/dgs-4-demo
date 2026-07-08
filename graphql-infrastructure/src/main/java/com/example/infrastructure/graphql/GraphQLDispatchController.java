@@ -3,7 +3,7 @@ package com.example.infrastructure.graphql;
 import com.example.infrastructure.validation.JsonSchemaValidationService;
 import com.netflix.graphql.dgs.DgsCodeRegistry;
 import com.netflix.graphql.dgs.DgsComponent;
-import graphql.language.TypeDefinition;
+import graphql.language.ObjectTypeDefinition;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.FieldCoordinates;
@@ -86,21 +86,14 @@ public class GraphQLDispatchController {
     private void verifyFieldExistsInSchema(TypeDefinitionRegistry typeDefinitionRegistry,
                                            String parentType,
                                            GraphQLResolver resolver) {
-        boolean declared = typeDefinitionRegistry.getType(parentType)
-                .map(type -> declaresField(type, resolver.fieldName()))
+        boolean declared = typeDefinitionRegistry.getType(parentType, ObjectTypeDefinition.class)
+                .map(type -> type.getFieldDefinitions().stream()
+                        .anyMatch(field -> field.getName().equals(resolver.fieldName())))
                 .orElse(false);
         if (!declared) {
             throw new IllegalStateException(String.format(
                     "%s resolves '%s.%s' but no such field is declared in the GraphQL schema",
                     resolver.getClass().getName(), parentType, resolver.fieldName()));
         }
-    }
-
-    private boolean declaresField(TypeDefinition<?> type, String fieldName) {
-        if (!(type instanceof graphql.language.ObjectTypeDefinition)) {
-            return false;
-        }
-        return ((graphql.language.ObjectTypeDefinition) type).getFieldDefinitions().stream()
-                .anyMatch(field -> field.getName().equals(fieldName));
     }
 }

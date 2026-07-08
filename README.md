@@ -14,9 +14,10 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
 │       ├── graphql            GraphQLDispatchController, GraphQLResolver contract,
 │       │                      GraphQLResolverRegistry, GraphQLArgumentMapper,
 │       │                      GraphQLExceptionHandler (global error boundary)
-│       ├── graphql.scalars    Date / DateTime scalars
+│       ├── graphql.scalars    TemporalScalar template + Date / DateTime scalars
 │       ├── validation         JsonSchemaValidationService (classpath:json-schema/*.json)
-│       ├── exception          ApiException hierarchy + ErrorCode catalog + ErrorDetail
+│       ├── exception          ApiException hierarchy, ErrorCode catalog, ErrorDetail,
+│       │                      ExceptionMapper strategy (pluggable error translation)
 │       └── persistence        BaseEntity (id + audit timestamps)
 ├── graphql-playground         <- domain-agnostic, reusable
 │   └── com.example.playground Self-hosted playground UI at /playground (no CDN)
@@ -24,7 +25,9 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
     └── com.example.person
         ├── graphql.query      PersonByIdResolver, AllPersonsResolver, PersonsByCityResolver
         ├── graphql.mutation   CreatePersonResolver, UpdatePersonSalaryResolver, DeletePersonResolver
-        ├── service            PersonService (calculations) + dto (views / inputs)
+        ├── service            PersonService (orchestration + business rules),
+        │                      PersonCalculations (pure math), PersonMapper (entity<->dto),
+        │                      dto (views / inputs)
         ├── dal                PersonDal + PersonRepository (Spring Data JPA)
         ├── domain             Person, Address (embedded), PhoneNumber (one-to-many), enums
         └── bootstrap          DemoDataLoader (seed data)
@@ -46,12 +49,12 @@ To add a new domain later: add a module with its own `schema/*.graphqls` file an
    Received GraphQL MUTATION 'updatePersonSalary', dispatching to UpdatePersonSalaryResolver
    ```
 
-2. **Service layer** — `PersonService` holds the business logic and calculates derived
-   fields before returning `PersonView` DTOs: `fullName`, `age` (from `birthDate`),
+2. **Service layer** — `PersonService` orchestrates and enforces business rules
+   (e.g. email uniqueness); the derived fields — `fullName`, `age` (from `birthDate`),
    `yearsOfService` (from `hireDate`), `monthlyNetSalary` (annual gross → monthly after
-   flat tax), `bmi` (from height/weight). It throws the framework-neutral
-   `EntityNotFoundException`, which the dispatch controller translates into a
-   `NOT_FOUND` GraphQL error — services never see GraphQL types.
+   flat tax), `bmi` (from height/weight) — are computed by `PersonCalculations` (pure,
+   unit-tested) and assembled into `PersonView` DTOs by `PersonMapper`. Failures are
+   framework-neutral `ApiException`s — services never see GraphQL types.
 
 3. **DAL** — `PersonDal` wraps `PersonRepository` (Spring Data JPA / Hibernate 5). The
    service layer never touches Spring Data directly.

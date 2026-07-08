@@ -11,7 +11,7 @@ import com.networknt.schema.ValidationMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -44,12 +44,11 @@ public class JsonSchemaValidationService {
     private final ObjectMapper objectMapper;
     private final Map<String, JsonSchema> schemasByName = new LinkedHashMap<>();
 
-    public JsonSchemaValidationService(ObjectMapper objectMapper) {
+    public JsonSchemaValidationService(ObjectMapper objectMapper, ResourcePatternResolver resourceResolver) {
         this.objectMapper = objectMapper;
         JsonSchemaFactory factory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7);
         try {
-            Resource[] resources = new PathMatchingResourcePatternResolver()
-                    .getResources(SCHEMA_LOCATION_PATTERN);
+            Resource[] resources = resourceResolver.getResources(SCHEMA_LOCATION_PATTERN);
             for (Resource resource : resources) {
                 String name = schemaName(resource);
                 schemasByName.put(name, factory.getSchema(resource.getInputStream()));

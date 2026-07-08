@@ -1,21 +1,22 @@
 package com.example.person.graphql.mutation;
 
+import com.example.infrastructure.graphql.GraphQLArgumentMapper;
 import com.example.infrastructure.graphql.GraphQLOperationType;
 import com.example.infrastructure.graphql.GraphQLResolver;
 import com.example.person.service.PersonService;
 import graphql.schema.DataFetchingEnvironment;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
-
 /** Handles {@code Mutation.updatePersonSalary}. */
 @Component
 public class UpdatePersonSalaryResolver implements GraphQLResolver {
 
     private final PersonService personService;
+    private final GraphQLArgumentMapper argumentMapper;
 
-    public UpdatePersonSalaryResolver(PersonService personService) {
+    public UpdatePersonSalaryResolver(PersonService personService, GraphQLArgumentMapper argumentMapper) {
         this.personService = personService;
+        this.argumentMapper = argumentMapper;
     }
 
     @Override
@@ -30,8 +31,8 @@ public class UpdatePersonSalaryResolver implements GraphQLResolver {
 
     @Override
     public Object resolve(DataFetchingEnvironment environment) {
-        long id = Long.parseLong(environment.getArgument("id"));
-        Number salary = environment.getArgument("salary");
-        return personService.updateSalary(id, BigDecimal.valueOf(salary.doubleValue()));
+        return personService.updateSalary(
+                argumentMapper.longArgument(environment, "id"),
+                argumentMapper.decimalArgument(environment, "salary"));
     }
 }

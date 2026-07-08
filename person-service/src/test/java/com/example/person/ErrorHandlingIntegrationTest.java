@@ -74,6 +74,17 @@ class ErrorHandlingIntegrationTest {
     }
 
     @Test
+    void nonNumericIdIsRejectedAsInvalidArgumentNotInternalError() {
+        ExecutionResult result = dgsQueryExecutor.execute("{ personById(id: \"not-a-number\") { id } }");
+
+        assertThat(result.getErrors()).hasSize(1);
+        GraphQLError error = result.getErrors().get(0);
+        assertThat(error.getMessage()).contains("must be a whole number");
+        assertThat(error.getExtensions().get("literal")).isEqualTo("INVALID_ARGUMENT");
+        assertThat(error.getExtensions().get("httpStatus")).isEqualTo(400);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void duplicateEmailCarriesConflictStatus() {
         // ada.lovelace@example.com is seeded at startup

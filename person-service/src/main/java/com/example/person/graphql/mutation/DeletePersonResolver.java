@@ -1,5 +1,6 @@
 package com.example.person.graphql.mutation;
 
+import com.example.infrastructure.graphql.GraphQLArgumentMapper;
 import com.example.infrastructure.graphql.GraphQLOperationType;
 import com.example.infrastructure.graphql.GraphQLResolver;
 import com.example.person.service.PersonService;
@@ -11,9 +12,11 @@ import org.springframework.stereotype.Component;
 public class DeletePersonResolver implements GraphQLResolver {
 
     private final PersonService personService;
+    private final GraphQLArgumentMapper argumentMapper;
 
-    public DeletePersonResolver(PersonService personService) {
+    public DeletePersonResolver(PersonService personService, GraphQLArgumentMapper argumentMapper) {
         this.personService = personService;
+        this.argumentMapper = argumentMapper;
     }
 
     @Override
@@ -28,7 +31,6 @@ public class DeletePersonResolver implements GraphQLResolver {
 
     @Override
     public Object resolve(DataFetchingEnvironment environment) {
-        long id = Long.parseLong(environment.getArgument("id"));
-        return personService.deletePerson(id);
+        return personService.deletePerson(argumentMapper.longArgument(environment, "id"));
     }
 }
