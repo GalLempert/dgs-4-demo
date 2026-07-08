@@ -1,0 +1,98 @@
+# Custom scalars registered by the graphql-infrastructure module
+scalar Date
+scalar DateTime
+
+type Query {
+    personById(id: ID!): Person
+    allPersons: [Person!]!
+    personsByCity(city: String!): [Person!]!
+}
+
+type Mutation {
+    createPerson(input: CreatePersonInput!): Person!
+    updatePersonSalary(id: ID!, salary: Float!): Person!
+    deletePerson(id: ID!): Boolean!
+}
+
+type Person {
+    id: ID!
+    firstName: String!
+    lastName: String!
+    "Calculated by the service layer"
+    fullName: String!
+    email: String!
+    birthDate: Date
+    "Calculated by the service layer from birthDate"
+    age: Int
+    gender: Gender
+    "Annual gross salary"
+    salary: Float
+    "Calculated by the service layer: monthly salary after flat income tax"
+    monthlyNetSalary: Float
+    active: Boolean!
+    hireDate: Date
+    "Calculated by the service layer from hireDate"
+    yearsOfService: Int
+    heightCm: Int
+    weightKg: Float
+    "Calculated by the service layer from height and weight"
+    bmi: Float
+    address: Address
+    phoneNumbers: [PhoneNumber!]!
+    hobbies: [String!]!
+    createdAt: DateTime
+}
+
+type Address {
+    street: String
+    houseNumber: Int
+    city: String
+    zipCode: String
+    country: String
+}
+
+type PhoneNumber {
+    type: PhoneType!
+    number: String!
+}
+
+enum Gender {
+    MALE
+    FEMALE
+    OTHER
+}
+
+enum PhoneType {
+    MOBILE
+    HOME
+    WORK
+}
+
+input CreatePersonInput {
+    firstName: String!
+    lastName: String!
+    email: String!
+    birthDate: Date
+    gender: Gender
+    salary: Float
+    active: Boolean
+    hireDate: Date
+    heightCm: Int
+    weightKg: Float
+    address: AddressInput
+    phoneNumbers: [PhoneNumberInput!]
+    hobbies: [String!]
+}
+
+input AddressInput {
+    street: String!
+    houseNumber: Int
+    city: String!
+    zipCode: String
+    country: String
+}
+
+input PhoneNumberInput {
+    type: PhoneType!
+    number: String!
+}
