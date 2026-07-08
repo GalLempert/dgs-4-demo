@@ -24,6 +24,7 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
 │       └── persistence        BaseEntity (id + audit timestamps)
 ├── graphql-playground         <- domain-agnostic, reusable
 │   └── com.example.playground Self-hosted playground UI at /playground (no CDN)
+├── perf-tests                 <- k6 black-box performance scenarios (see its README)
 └── person-service             <- concrete Person domain, runnable Spring Boot app
     └── com.example.person
         ├── graphql.query      PersonByIdResolver, AllPersonsResolver, PersonsByCityResolver
@@ -203,6 +204,16 @@ log at WARN (no stack trace); unexpected exceptions log at ERROR with the full s
 visible while playing with the demo — one request produces a trace like
 *dispatch → schema validation → service → DAL → computed view*. Switch it to `INFO`
 for quieter output.
+
+## Performance tests
+
+`perf-tests/` contains k6 scenarios that treat the service as a black box over HTTP:
+a smoke script plus a load script with read, write and validation-reject scenarios and
+latency thresholds that fail the run when breached. They are deliberately outside the
+Maven lifecycle — see [perf-tests/README.md](perf-tests/README.md) for the rationale,
+how to run them, and a measured baseline. Run the service with the `perf` profile
+(`--spring.profiles.active=perf`) during load tests so DEBUG logging doesn't skew
+latency.
 
 ## Library conflicts and your options
 

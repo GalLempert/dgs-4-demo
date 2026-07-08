@@ -1,0 +1,11 @@
+# Profile for performance testing: quiet logging so log I/O doesn't skew latency.
+# Run with:  java -jar person-service/target/person-service-*.jar --spring.profiles.active=perf
+logging:
+  level:
+    com.example: INFO
+
+spring:
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
