@@ -1,5 +1,6 @@
 package com.example.person.service;
 
+import com.example.infrastructure.exception.DuplicateResourceException;
 import com.example.infrastructure.exception.EntityNotFoundException;
 import com.example.person.dal.PersonDal;
 import com.example.person.domain.Address;
@@ -9,6 +10,8 @@ import com.example.person.service.dto.AddressView;
 import com.example.person.service.dto.CreatePersonInput;
 import com.example.person.service.dto.PersonView;
 import com.example.person.service.dto.PhoneNumberView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +31,8 @@ import java.util.stream.Collectors;
 @Service
 public class PersonService {
 
+    private static final Logger log = LoggerFactory.getLogger(PersonService.class);
+
     private static final BigDecimal INCOME_TAX_RATE = new BigDecimal("0.25");
     private static final int MONTHS_PER_YEAR = 12;
 
@@ -39,6 +44,7 @@ public class PersonService {
 
     @Transactional(readOnly = true)
     public PersonView getPerson(long id) {
+        log.debug("Fetching person {}", id);
         Person person = personDal.findById(id)
                 .orElseThrow(() -> EntityNotFoundException.of("Person", id));
         return toView(person);
@@ -46,18 +52,24 @@ public class PersonService {
 
     @Transactional(readOnly = true)
     public List<PersonView> getAllPersons() {
-        return personDal.findAll().stream().map(this::toView).collect(Collectors.toList());
+        List<PersonView> views = personDal.findAll().stream().map(this::toView).collect(Collectors.toList());
+        log.debug("Fetched {} persons", views.size());
+        return views;
     }
 
     @Transactional(readOnly = true)
     public List<PersonView> getPersonsByCity(String city) {
-        return personDal.findByCity(city).stream().map(this::toView).collect(Collectors.toList());
+        List<PersonView> views = personDal.findByCity(city).stream().map(this::toView).collect(Collectors.toList());
+        log.debug("Fetched {} persons in city '{}'", views.size(), city);
+        return views;
     }
 
     @Transactional
     public PersonView createPerson(CreatePersonInput input) {
+        log.info("Creating person with email {}", input.getEmail());
         if (personDal.emailExists(input.getEmail())) {
-            throw new IllegalArgumentException("A person with email " + input.getEmail() + " already exists");
+            throw new DuplicateResourceException(
+                    "A person with email " + input.getEmail() + " already exists", "email");
         }
 
         Person person = new Person(input.getFirstName(), input.getLastName(), input.getEmail());
@@ -83,11 +95,14 @@ public class PersonService {
                     person.addPhoneNumber(new PhoneNumber(phone.getType(), phone.getNumber())));
         }
 
-        return toView(personDal.save(person));
+        PersonView view = toView(personDal.save(person));
+        log.info("Created person {} ({})", view.getId(), view.getFullName());
+        return view;
     }
 
     @Transactional
     public PersonView updateSalary(long id, BigDecimal newSalary) {
+        log.info("Updating salary of person {} to {}", id, newSalary);
         Person person = personDal.findById(id)
                 .orElseThrow(() -> EntityNotFoundException.of("Person", id));
         person.setSalary(newSalary);
@@ -97,9 +112,11 @@ public class PersonService {
     @Transactional
     public boolean deletePerson(long id) {
         if (!personDal.exists(id)) {
+            log.info("Delete requested for person {} but it does not exist", id);
             return false;
         }
         personDal.deleteById(id);
+        log.info("Deleted person {}", id);
         return true;
     }
 
@@ -172,6 +189,8 @@ public class PersonService {
         view.setPhoneNumbers(person.getPhoneNumbers().stream()
                 .map(phone -> new PhoneNumberView(phone.getType(), phone.getNumber()))
                 .collect(Collectors.toList()));
+        log.debug("Computed view for person {}: age={}, yearsOfService={}, monthlyNetSalary={}, bmi={}",
+                view.getId(), view.getAge(), view.getYearsOfService(), view.getMonthlyNetSalary(), view.getBmi());
         return view;
     }
 }

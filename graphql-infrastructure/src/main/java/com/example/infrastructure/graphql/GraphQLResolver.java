@@ -2,6 +2,9 @@ package com.example.infrastructure.graphql;
 
 import graphql.schema.DataFetchingEnvironment;
 
+import java.util.Collections;
+import java.util.Map;
+
 /**
  * Contract for a single GraphQL operation (one query or one mutation field).
  *
@@ -25,4 +28,14 @@ public interface GraphQLResolver {
      * Executes the operation. Runs with full access to the data fetching environment.
      */
     Object resolve(DataFetchingEnvironment environment) throws Exception;
+
+    /**
+     * Declares which GraphQL arguments must pass server-side JSON Schema validation
+     * before this resolver is invoked: argument name -> schema name (a file under
+     * {@code classpath:json-schema/<name>.json}). The dispatch controller enforces
+     * this; resolvers never see payloads that failed validation.
+     */
+    default Map<String, String> argumentJsonSchemas() {
+        return Collections.emptyMap();
+    }
 }

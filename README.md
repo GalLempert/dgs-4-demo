@@ -12,9 +12,11 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
 ├── graphql-infrastructure     <- domain-agnostic, reusable
 │   └── com.example.infrastructure
 │       ├── graphql            GraphQLDispatchController, GraphQLResolver contract,
-│       │                      GraphQLResolverRegistry, GraphQLArgumentMapper
+│       │                      GraphQLResolverRegistry, GraphQLArgumentMapper,
+│       │                      GraphQLExceptionHandler (global error boundary)
 │       ├── graphql.scalars    Date / DateTime scalars
-│       ├── exception          EntityNotFoundException (framework-neutral)
+│       ├── validation         JsonSchemaValidationService (classpath:json-schema/*.json)
+│       ├── exception          ApiException hierarchy + ErrorCode catalog + ErrorDetail
 │       └── persistence        BaseEntity (id + audit timestamps)
 ├── graphql-playground         <- domain-agnostic, reusable
 │   └── com.example.playground Self-hosted playground UI at /playground (no CDN)
@@ -128,6 +130,73 @@ mutation {
   }
 }
 ```
+
+## Error handling
+
+`GraphQLExceptionHandler` (infrastructure) replaces the DGS default handler and is the
+global error boundary: **any** exception thrown anywhere below the GraphQL layer lands
+there.
+
+- Known failures extend `ApiException`, which carries an `ErrorCode` — a catalog entry
+  that maps to an HTTP-equivalent status and a GraphQL classification
+  (`ENTITY_NOT_FOUND`→404, `SCHEMA_VALIDATION_FAILED`→400, `DUPLICATE_RESOURCE`→409,
+  `INVALID_ARGUMENT`→400, `INTERNAL_ERROR`→500) — plus optional per-field
+  `ErrorDetail`s.
+- Unknown exceptions are logged with their stack trace and rendered as a generic
+  `INTERNAL_ERROR` (500) so internals don't leak into responses.
+
+Every GraphQL error therefore has structured `extensions`:
+
+```json
+{
+  "message": "Request failed JSON schema validation against schema 'person-create' (1 violation)",
+  "path": ["createPerson"],
+  "extensions": {
+    "literal": "SCHEMA_VALIDATION_FAILED",
+    "errorType": "BAD_REQUEST",
+    "httpStatus": 400,
+    "timestamp": "2026-07-08T17:42:19.296Z",
+    "details": [
+      { "field": "$.heightCm", "constraint": "maximum",
+        "reason": "$.heightCm: must have a maximum value of 260" }
+    ]
+  }
+}
+```
+
+Layering note: services throw framework-neutral `ApiException`s and never see
+GraphQL/DGS types; only the handler knows how to render them.
+
+## JSON Schema validation (stronger than the GraphQL schema)
+
+GraphQL's type system can't express value ranges, string patterns, array sizes or
+formats — so every mutation input is also validated server-side against a JSON Schema
+(draft-07, via `com.networknt:json-schema-validator`).
+
+- Domain modules drop schemas under `classpath:json-schema/<name>.json`
+  (`person-service` ships `person-create.json`: `heightCm` 50–260, `weightKg` 2–500,
+  email/date formats, phone/zip patterns, hobby array 1–10 items…).
+- A resolver opts in by overriding `argumentJsonSchemas()`, e.g.
+  `{"input" → "person-create"}`. The **dispatch controller** runs the validation on the
+  raw argument before invoking the resolver, so invalid payloads never reach the
+  service layer.
+- Violations become a `SCHEMA_VALIDATION_FAILED` error with one `details` entry per
+  broken constraint (field path, schema keyword, human-readable reason) — see the
+  example above: GraphQL happily accepted `heightCm: 300` as an `Int`; the JSON schema
+  rejected it with the exact reason.
+
+## Logging
+
+All layers log through SLF4J: INFO for business events (operation received and
+dispatched, person created/updated/deleted, schemas loaded, resolver registrations)
+and DEBUG for the detailed flow (raw arguments, JSON schema payloads and results, DTO
+conversions, every DAL/database call, calculated view values). Known request failures
+log at WARN (no stack trace); unexpected exceptions log at ERROR with the full stack.
+
+`application.yml` ships with `logging.level.com.example: DEBUG` so the whole flow is
+visible while playing with the demo — one request produces a trace like
+*dispatch → schema validation → service → DAL → computed view*. Switch it to `INFO`
+for quieter output.
 
 ## Library conflicts and your options
 

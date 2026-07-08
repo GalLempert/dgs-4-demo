@@ -45,6 +45,13 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Server-side JSON Schema validation (draft-07); 1.0.5x is era-matched
+                 with the Jackson 2.11/2.12 line that Boot 2.4.2 manages -->
+            <dependency>
+                <groupId>com.networknt</groupId>
+                <artifactId>json-schema-validator</artifactId>
+                <version>1.0.52</version>
+            </dependency>
             <!-- DGS BOM: manages all com.netflix.graphql.dgs artifacts + graphql-java 17.3 -->
             <dependency>
                 <groupId>com.netflix.graphql.dgs</groupId>

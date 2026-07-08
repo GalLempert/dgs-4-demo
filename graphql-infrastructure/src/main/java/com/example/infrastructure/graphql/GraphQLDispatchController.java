@@ -1,9 +1,8 @@
 package com.example.infrastructure.graphql;
 
-import com.example.infrastructure.exception.EntityNotFoundException;
+import com.example.infrastructure.validation.JsonSchemaValidationService;
 import com.netflix.graphql.dgs.DgsCodeRegistry;
 import com.netflix.graphql.dgs.DgsComponent;
-import com.netflix.graphql.dgs.exceptions.DgsEntityNotFoundException;
 import graphql.language.TypeDefinition;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
@@ -13,14 +12,21 @@ import graphql.schema.idl.TypeDefinitionRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
+
 /**
  * The single GraphQL entry point ("controller" layer).
  *
  * <p>At startup it programmatically registers a data fetcher for every
  * {@link GraphQLResolver} bean found by the {@link GraphQLResolverRegistry}. At request
- * time it therefore knows exactly which query or mutation was received, logs it, and
+ * time it therefore knows exactly which query or mutation was received, logs it,
+ * enforces the resolver's declared JSON Schema validations on the raw arguments, and
  * dispatches to the corresponding resolver class, handing over the full
  * {@link DataFetchingEnvironment}.
+ *
+ * <p>Exceptions are deliberately NOT handled here - anything thrown below this point
+ * (validation, service, DAL) is caught by the {@link GraphQLExceptionHandler}, the
+ * global error boundary that renders structured GraphQL errors.
  *
  * <p>This class is completely domain-agnostic: adding a new domain only requires new
  * {@link GraphQLResolver} beans plus the matching schema file - no change here.
@@ -31,9 +37,12 @@ public class GraphQLDispatchController {
     private static final Logger log = LoggerFactory.getLogger(GraphQLDispatchController.class);
 
     private final GraphQLResolverRegistry resolverRegistry;
+    private final JsonSchemaValidationService jsonSchemaValidationService;
 
-    public GraphQLDispatchController(GraphQLResolverRegistry resolverRegistry) {
+    public GraphQLDispatchController(GraphQLResolverRegistry resolverRegistry,
+                                     JsonSchemaValidationService jsonSchemaValidationService) {
         this.resolverRegistry = resolverRegistry;
+        this.jsonSchemaValidationService = jsonSchemaValidationService;
     }
 
     @DgsCodeRegistry
@@ -47,8 +56,11 @@ public class GraphQLDispatchController {
             DataFetcher<Object> dataFetcher = environment -> dispatch(resolver, environment);
             codeRegistryBuilder.dataFetcher(coordinates, dataFetcher);
 
-            log.info("Registered GraphQL {} '{}' -> {}",
-                    resolver.operationType(), resolver.fieldName(), resolver.getClass().getSimpleName());
+            log.info("Registered GraphQL {} '{}' -> {}{}",
+                    resolver.operationType(), resolver.fieldName(), resolver.getClass().getSimpleName(),
+                    resolver.argumentJsonSchemas().isEmpty()
+                            ? ""
+                            : " (JSON schema validation: " + resolver.argumentJsonSchemas() + ")");
         }
         return codeRegistryBuilder;
     }
@@ -56,13 +68,19 @@ public class GraphQLDispatchController {
     private Object dispatch(GraphQLResolver resolver, DataFetchingEnvironment environment) throws Exception {
         log.info("Received GraphQL {} '{}', dispatching to {}",
                 resolver.operationType(), resolver.fieldName(), resolver.getClass().getSimpleName());
-        try {
-            return resolver.resolve(environment);
-        } catch (EntityNotFoundException notFound) {
-            // Translate the framework-neutral exception thrown by service layers into the
-            // DGS exception that renders as a NOT_FOUND GraphQL error.
-            throw new DgsEntityNotFoundException(notFound.getMessage());
+        log.debug("Arguments of '{}': {}", resolver.fieldName(), environment.getArguments());
+
+        for (Map.Entry<String, String> validation : resolver.argumentJsonSchemas().entrySet()) {
+            String argumentName = validation.getKey();
+            String schemaName = validation.getValue();
+            log.debug("Validating argument '{}' of '{}' against JSON schema '{}'",
+                    argumentName, resolver.fieldName(), schemaName);
+            jsonSchemaValidationService.validate(schemaName, environment.getArgument(argumentName));
         }
+
+        Object result = resolver.resolve(environment);
+        log.debug("Resolver {} completed for '{}'", resolver.getClass().getSimpleName(), resolver.fieldName());
+        return result;
     }
 
     private void verifyFieldExistsInSchema(TypeDefinitionRegistry typeDefinitionRegistry,

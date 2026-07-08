@@ -23,8 +23,10 @@ spring:
       enabled: true
       path: /h2-console
 
+# DEBUG shows the full request flow (dispatch -> validation -> service -> DAL);
+# switch to INFO to keep only the business-level log lines.
 logging:
   level:
-    com.example: INFO
+    com.example: DEBUG
 
 # DGS serves GraphQL at /graphql and GraphiQL at /graphiql by default
