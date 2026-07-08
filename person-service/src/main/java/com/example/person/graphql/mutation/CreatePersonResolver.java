@@ -1,8 +1,8 @@
 package com.example.person.graphql.mutation;
 
-import com.example.infrastructure.graphql.GraphQLArgumentMapper;
-import com.example.infrastructure.graphql.GraphQLOperationType;
-import com.example.infrastructure.graphql.GraphQLResolver;
+import com.example.infrastructure.graphql.arguments.GraphQLArgumentMapper;
+import com.example.infrastructure.graphql.dispatch.GraphQLOperationType;
+import com.example.infrastructure.graphql.dispatch.GraphQLResolver;
 import com.example.person.service.PersonService;
 import com.example.person.service.dto.CreatePersonInput;
 import graphql.schema.DataFetchingEnvironment;

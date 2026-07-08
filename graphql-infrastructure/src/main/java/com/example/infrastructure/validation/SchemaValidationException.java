@@ -1,4 +1,8 @@
-package com.example.infrastructure.exception;
+package com.example.infrastructure.validation;
+
+import com.example.infrastructure.error.ApiException;
+import com.example.infrastructure.error.ErrorCode;
+import com.example.infrastructure.error.ErrorDetail;
 
 import java.util.List;
 

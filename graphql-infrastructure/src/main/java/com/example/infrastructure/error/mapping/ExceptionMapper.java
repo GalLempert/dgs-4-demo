@@ -1,4 +1,6 @@
-package com.example.infrastructure.exception;
+package com.example.infrastructure.error.mapping;
+
+import com.example.infrastructure.error.ApiException;
 
 /**
  * Strategy for translating a raised exception into a structured {@link ApiException}.

@@ -1,7 +1,6 @@
 package com.example.infrastructure.validation;
 
-import com.example.infrastructure.exception.ErrorDetail;
-import com.example.infrastructure.exception.SchemaValidationException;
+import com.example.infrastructure.error.ErrorDetail;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.networknt.schema.JsonSchema;

@@ -1,4 +1,4 @@
-package com.example.infrastructure.exception;
+package com.example.infrastructure.error;
 
 /**
  * Canonical error catalog. Every {@link ApiException} carries one of these codes; the

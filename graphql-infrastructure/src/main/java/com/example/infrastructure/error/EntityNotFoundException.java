@@ -1,4 +1,4 @@
-package com.example.infrastructure.exception;
+package com.example.infrastructure.error;
 
 /**
  * Framework-neutral "not found" exception for service layers to throw (HTTP 404

@@ -1,8 +1,8 @@
-package com.example.infrastructure.graphql;
+package com.example.infrastructure.graphql.arguments;
 
-import com.example.infrastructure.exception.ApiException;
-import com.example.infrastructure.exception.ErrorCode;
-import com.example.infrastructure.exception.ErrorDetail;
+import com.example.infrastructure.error.ApiException;
+import com.example.infrastructure.error.ErrorCode;
+import com.example.infrastructure.error.ErrorDetail;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import graphql.schema.DataFetchingEnvironment;
 import org.slf4j.Logger;

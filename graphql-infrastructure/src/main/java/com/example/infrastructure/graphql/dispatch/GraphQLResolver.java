@@ -1,4 +1,4 @@
-package com.example.infrastructure.graphql;
+package com.example.infrastructure.graphql.dispatch;
 
 import graphql.schema.DataFetchingEnvironment;
 

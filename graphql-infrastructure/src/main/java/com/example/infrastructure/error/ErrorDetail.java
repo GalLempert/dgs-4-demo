@@ -1,4 +1,4 @@
-package com.example.infrastructure.exception;
+package com.example.infrastructure.error;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

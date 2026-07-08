@@ -10,14 +10,17 @@ The project is split so the generic parts can be reused for future domains:
 ```
 dgs-demo (parent pom, dependency management, version conflict resolution)
 ├── graphql-infrastructure     <- domain-agnostic, reusable
-│   └── com.example.infrastructure
-│       ├── graphql            GraphQLDispatchController, GraphQLResolver contract,
-│       │                      GraphQLResolverRegistry, GraphQLArgumentMapper,
-│       │                      GraphQLExceptionHandler (global error boundary)
+│   └── com.example.infrastructure   (each package has a package-info.java)
+│       ├── graphql.dispatch   the GraphQL controller layer: GraphQLDispatchController,
+│       │                      GraphQLResolver contract, GraphQLResolverRegistry,
+│       │                      GraphQLOperationType
+│       ├── graphql.arguments  GraphQLArgumentMapper (typed access to raw arguments)
+│       ├── graphql.error      GraphQLExceptionHandler (global error boundary)
 │       ├── graphql.scalars    TemporalScalar template + Date / DateTime scalars
-│       ├── validation         JsonSchemaValidationService (classpath:json-schema/*.json)
-│       ├── exception          ApiException hierarchy, ErrorCode catalog, ErrorDetail,
-│       │                      ExceptionMapper strategy (pluggable error translation)
+│       ├── error              the error model: ApiException, ErrorCode catalog,
+│       │                      ErrorDetail, EntityNotFound / DuplicateResource
+│       ├── error.mapping      ExceptionMapper strategy (pluggable error translation)
+│       ├── validation         JsonSchemaValidationService + SchemaValidationException
 │       └── persistence        BaseEntity (id + audit timestamps)
 ├── graphql-playground         <- domain-agnostic, reusable
 │   └── com.example.playground Self-hosted playground UI at /playground (no CDN)

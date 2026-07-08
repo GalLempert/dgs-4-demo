@@ -1,9 +1,9 @@
-package com.example.infrastructure.graphql;
+package com.example.infrastructure.graphql.error;
 
-import com.example.infrastructure.exception.ApiException;
-import com.example.infrastructure.exception.ErrorCode;
-import com.example.infrastructure.exception.ErrorDetail;
-import com.example.infrastructure.exception.ExceptionMapper;
+import com.example.infrastructure.error.ApiException;
+import com.example.infrastructure.error.ErrorCode;
+import com.example.infrastructure.error.ErrorDetail;
+import com.example.infrastructure.error.mapping.ExceptionMapper;
 import graphql.GraphQLError;
 import graphql.GraphqlErrorBuilder;
 import graphql.execution.DataFetcherExceptionHandler;

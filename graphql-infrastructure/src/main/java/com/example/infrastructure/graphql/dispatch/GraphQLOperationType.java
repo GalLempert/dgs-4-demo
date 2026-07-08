@@ -1,4 +1,4 @@
-package com.example.infrastructure.graphql;
+package com.example.infrastructure.graphql.dispatch;
 
 /**
  * The kind of GraphQL operation a {@link GraphQLResolver} handles, mapped to the

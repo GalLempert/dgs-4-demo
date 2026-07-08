@@ -1,5 +1,6 @@
-package com.example.infrastructure.exception;
+package com.example.infrastructure.error.mapping;
 
+import com.example.infrastructure.error.ApiException;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 

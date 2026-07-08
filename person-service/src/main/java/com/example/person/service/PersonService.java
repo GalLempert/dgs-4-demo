@@ -1,7 +1,7 @@
 package com.example.person.service;
 
-import com.example.infrastructure.exception.DuplicateResourceException;
-import com.example.infrastructure.exception.EntityNotFoundException;
+import com.example.infrastructure.error.DuplicateResourceException;
+import com.example.infrastructure.error.EntityNotFoundException;
 import com.example.person.dal.PersonDal;
 import com.example.person.domain.Person;
 import com.example.person.service.dto.CreatePersonInput;

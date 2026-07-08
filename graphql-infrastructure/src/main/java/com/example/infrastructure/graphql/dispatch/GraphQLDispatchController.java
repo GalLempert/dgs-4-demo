@@ -1,4 +1,4 @@
-package com.example.infrastructure.graphql;
+package com.example.infrastructure.graphql.dispatch;
 
 import com.example.infrastructure.validation.JsonSchemaValidationService;
 import com.netflix.graphql.dgs.DgsCodeRegistry;
@@ -25,7 +25,7 @@ import java.util.Map;
  * {@link DataFetchingEnvironment}.
  *
  * <p>Exceptions are deliberately NOT handled here - anything thrown below this point
- * (validation, service, DAL) is caught by the {@link GraphQLExceptionHandler}, the
+ * (validation, service, DAL) is caught by the {@link com.example.infrastructure.graphql.error.GraphQLExceptionHandler}, the
  * global error boundary that renders structured GraphQL errors.
  *
  * <p>This class is completely domain-agnostic: adding a new domain only requires new
