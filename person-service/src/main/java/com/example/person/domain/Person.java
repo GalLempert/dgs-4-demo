@@ -1,6 +1,7 @@
 package com.example.person.domain;
 
 import com.example.infrastructure.persistence.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import javax.persistence.CascadeType;
 import javax.persistence.CollectionTable;
@@ -61,6 +62,10 @@ public class Person extends BaseEntity {
     @Embedded
     private Address address;
 
+    // @JsonManagedReference: when the InputMapper populates this entity from an input
+    // DTO, Jackson wires each child's back-reference (PhoneNumber.person) to this
+    // instance - the declarative equivalent of calling addPhoneNumber() per child.
+    @JsonManagedReference
     @OneToMany(mappedBy = "person", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<PhoneNumber> phoneNumbers = new ArrayList<>();
 

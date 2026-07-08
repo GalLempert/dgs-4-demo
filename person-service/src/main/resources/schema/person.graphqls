@@ -2,6 +2,20 @@
 scalar Date
 scalar DateTime
 
+"Output format for temporal fields annotated with @GraphQLTemporal on the model"
+enum DateFormat {
+    ISO
+    UNIX
+    RFC_1123
+}
+
+"An enum code enriched with human-readable data from the enum catalog"
+type EnumValue {
+    code: String!
+    label: String!
+    description: String
+}
+
 type Query {
     personById(id: ID!): Person
     allPersons: [Person!]!
@@ -21,16 +35,19 @@ type Person {
     "Calculated by the service layer"
     fullName: String!
     email: String!
-    birthDate: Date
+    "Renders in the requested format (@GraphQLTemporal on PersonView)"
+    birthDate(format: DateFormat = ISO): String
     "Calculated by the service layer from birthDate"
     age: Int
-    gender: Gender
+    "Enriched from the enum catalog (@GraphQLEnum on PersonView)"
+    gender: EnumValue
     "Annual gross salary"
     salary: Float
     "Calculated by the service layer: monthly salary after flat income tax"
     monthlyNetSalary: Float
     active: Boolean!
-    hireDate: Date
+    "Renders in the requested format (@GraphQLTemporal on PersonView)"
+    hireDate(format: DateFormat = ISO): String
     "Calculated by the service layer from hireDate"
     yearsOfService: Int
     heightCm: Int
@@ -40,7 +57,8 @@ type Person {
     address: Address
     phoneNumbers: [PhoneNumber!]!
     hobbies: [String!]!
-    createdAt: DateTime
+    "Renders in the requested format (@GraphQLTemporal on PersonView)"
+    createdAt(format: DateFormat = ISO): String
 }
 
 type Address {

@@ -1,9 +1,8 @@
 package com.example.person.service;
 
+import com.example.infrastructure.mapping.InputMapper;
 import com.example.person.domain.Address;
 import com.example.person.domain.Person;
-import com.example.person.domain.PhoneNumber;
-import com.example.person.service.dto.AddressInput;
 import com.example.person.service.dto.AddressView;
 import com.example.person.service.dto.CreatePersonInput;
 import com.example.person.service.dto.PersonView;
@@ -27,9 +26,11 @@ public class PersonMapper {
     private static final Logger log = LoggerFactory.getLogger(PersonMapper.class);
 
     private final PersonCalculations calculations;
+    private final InputMapper inputMapper;
 
-    public PersonMapper(PersonCalculations calculations) {
+    public PersonMapper(PersonCalculations calculations, InputMapper inputMapper) {
         this.calculations = calculations;
+        this.inputMapper = inputMapper;
     }
 
     public PersonView toView(Person person) {
@@ -62,22 +63,13 @@ public class PersonMapper {
         return view;
     }
 
+    /**
+     * Field-by-field copying is delegated to the {@link InputMapper}; how nested parts
+     * are wired is declared on the entity itself (e.g. {@code @JsonManagedReference} /
+     * {@code @JsonBackReference} connect each phone number back to its person).
+     */
     public Person toEntity(CreatePersonInput input) {
-        Person person = new Person(input.getFirstName(), input.getLastName(), input.getEmail());
-        person.setBirthDate(input.getBirthDate());
-        person.setGender(input.getGender());
-        person.setSalary(input.getSalary());
-        person.setActive(input.getActive() == null || input.getActive());
-        person.setHireDate(input.getHireDate());
-        person.setHeightCm(input.getHeightCm());
-        person.setWeightKg(input.getWeightKg());
-        person.setHobbies(input.getHobbies());
-        person.setAddress(toAddress(input.getAddress()));
-        if (input.getPhoneNumbers() != null) {
-            input.getPhoneNumbers().forEach(phone ->
-                    person.addPhoneNumber(new PhoneNumber(phone.getType(), phone.getNumber())));
-        }
-        return person;
+        return inputMapper.map(input, Person.class);
     }
 
     private AddressView toAddressView(Address address) {
@@ -90,17 +82,5 @@ public class PersonMapper {
                 address.getCity(),
                 address.getZipCode(),
                 address.getCountry());
-    }
-
-    private Address toAddress(AddressInput input) {
-        if (input == null) {
-            return null;
-        }
-        return new Address(
-                input.getStreet(),
-                input.getHouseNumber(),
-                input.getCity(),
-                input.getZipCode(),
-                input.getCountry());
     }
 }

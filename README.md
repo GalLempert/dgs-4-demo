@@ -12,11 +12,16 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
 ├── graphql-infrastructure     <- domain-agnostic, reusable
 │   └── com.example.infrastructure   (each package has a package-info.java)
 │       ├── graphql.dispatch   the GraphQL controller layer: GraphQLDispatchController,
-│       │                      GraphQLResolver contract, GraphQLResolverRegistry,
-│       │                      GraphQLOperationType
+│       │                      GraphQLResolver + GraphQLFieldResolver contracts,
+│       │                      GraphQLResolverRegistry, GraphQLOperationType
 │       ├── graphql.arguments  GraphQLArgumentMapper (typed access to raw arguments)
+│       ├── graphql.model      @GraphQLModel/@GraphQLEnum/@GraphQLTemporal annotations
+│       │                      + AnnotatedFieldResolverFactory (field presentation)
+│       ├── graphql.format     TemporalFormatter strategies (ISO/UNIX/RFC_1123)
 │       ├── graphql.error      GraphQLExceptionHandler (global error boundary)
 │       ├── graphql.scalars    TemporalScalar template + Date / DateTime scalars
+│       ├── enums              EnumCatalog + EnumEntry (enum enrichment)
+│       ├── mapping            InputMapper (declarative input->entity mapping)
 │       ├── error              the error model: ApiException, ErrorCode catalog,
 │       │                      ErrorDetail, EntityNotFound / DuplicateResource
 │       ├── error.mapping      ExceptionMapper strategy (pluggable error translation)
@@ -137,6 +142,52 @@ mutation {
   }
 }
 ```
+
+## Field presentation: annotations on the model
+
+The same stored value can be exposed in different shapes without extra DTOs or manual
+mapping — the model declares its presentation, and reading the class tells you which
+fields return more than their raw value:
+
+```java
+@GraphQLModel("Person")
+public class PersonView {
+    @GraphQLTemporal   private LocalDate birthDate;   // birthDate(format: ISO|UNIX|RFC_1123)
+    @GraphQLEnum("gender") private Gender gender;     // gender { code label description }
+    private Integer age;                              // plain field, raw value
+    ...
+}
+```
+
+At startup the `AnnotatedFieldResolverFactory` turns these annotations into field
+resolvers that the dispatch controller registers per schema coordinate
+(`Person.gender`, `Person.birthDate`…); unannotated fields keep the default property
+fetcher. One query can request several shapes at once via aliases:
+
+```graphql
+{ personById(id: "1") {
+    gender { code label description }         # enriched from the EnumCatalog
+    iso:  birthDate                            # "1985-12-10"
+    unix: birthDate(format: UNIX)              # "503020800"
+    rfc:  birthDate(format: RFC_1123)          # "Tue, 10 Dec 1985 00:00:00 GMT"
+} }
+```
+
+- **Time formats** are `TemporalFormatter` strategy beans (ISO, UNIX, RFC_1123) —
+  adding a format is one bean plus one enum literal in the schema.
+- **Enum enrichment** resolves codes through `EnumCatalog` beans; the demo uses a
+  static catalog (`PersonEnumCatalog`), swappable for an external enum service later
+  without touching models or schema. The lookup runs only when the field is selected.
+- Domain modules register their annotated models with one `GraphQLModelSource` bean.
+
+## Declarative input mapping (service layer)
+
+`InputMapper` (infrastructure) maps input DTOs onto entities via Jackson by field
+name, so `PersonMapper.toEntity` is a one-liner instead of field-by-field copying.
+Behavior is declared as annotations on the entity: `@JsonManagedReference` /
+`@JsonBackReference` wire each nested `PhoneNumber` back to its `Person` during
+mapping, `@JsonIgnore`/`@JsonAlias` are available for exclusions and renames. Null
+input fields are skipped, so entity field defaults (e.g. `active = true`) survive.
 
 ## Error handling
 

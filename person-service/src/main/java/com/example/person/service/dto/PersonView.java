@@ -1,5 +1,8 @@
 package com.example.person.service.dto;
 
+import com.example.infrastructure.graphql.model.GraphQLEnum;
+import com.example.infrastructure.graphql.model.GraphQLModel;
+import com.example.infrastructure.graphql.model.GraphQLTemporal;
 import com.example.person.domain.Gender;
 
 import java.math.BigDecimal;
@@ -11,7 +14,13 @@ import java.util.Set;
 /**
  * What the GraphQL layer exposes for a person: all stored fields plus the values the
  * service layer calculates (fullName, age, yearsOfService, monthlyNetSalary, bmi).
+ *
+ * <p>Presentation annotations declare which fields are serialized as more than their
+ * raw value: {@code @GraphQLTemporal} fields take a {@code format} argument
+ * (ISO/UNIX/RFC_1123), {@code @GraphQLEnum} fields are enriched from the enum catalog
+ * into {@code EnumValue} objects. Unannotated fields return their plain value.
  */
+@GraphQLModel("Person")
 public class PersonView {
 
     private Long id;
@@ -19,13 +28,22 @@ public class PersonView {
     private String lastName;
     private String fullName;
     private String email;
+
+    @GraphQLTemporal
     private LocalDate birthDate;
+
     private Integer age;
+
+    @GraphQLEnum("gender")
     private Gender gender;
+
     private BigDecimal salary;
     private BigDecimal monthlyNetSalary;
     private boolean active;
+
+    @GraphQLTemporal
     private LocalDate hireDate;
+
     private Integer yearsOfService;
     private Integer heightCm;
     private Double weightKg;
@@ -33,6 +51,8 @@ public class PersonView {
     private AddressView address;
     private List<PhoneNumberView> phoneNumbers;
     private Set<String> hobbies;
+
+    @GraphQLTemporal
     private LocalDateTime createdAt;
 
     public Long getId() {

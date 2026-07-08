@@ -48,9 +48,16 @@ public class GraphQLDispatchController {
     @DgsCodeRegistry
     public GraphQLCodeRegistry.Builder registerResolvers(GraphQLCodeRegistry.Builder codeRegistryBuilder,
                                                          TypeDefinitionRegistry typeDefinitionRegistry) {
-        for (GraphQLResolver resolver : resolverRegistry.allResolvers()) {
+        registerOperationResolvers(codeRegistryBuilder, typeDefinitionRegistry);
+        registerFieldResolvers(codeRegistryBuilder, typeDefinitionRegistry);
+        return codeRegistryBuilder;
+    }
+
+    private void registerOperationResolvers(GraphQLCodeRegistry.Builder codeRegistryBuilder,
+                                            TypeDefinitionRegistry typeDefinitionRegistry) {
+        for (GraphQLResolver resolver : resolverRegistry.operationResolvers()) {
             String parentType = resolver.operationType().parentTypeName();
-            verifyFieldExistsInSchema(typeDefinitionRegistry, parentType, resolver);
+            verifyFieldExistsInSchema(typeDefinitionRegistry, parentType, resolver.fieldName(), resolver.getClass());
 
             FieldCoordinates coordinates = FieldCoordinates.coordinates(parentType, resolver.fieldName());
             DataFetcher<Object> dataFetcher = environment -> dispatch(resolver, environment);
@@ -62,7 +69,21 @@ public class GraphQLDispatchController {
                             ? ""
                             : " (JSON schema validation: " + resolver.argumentJsonSchemas() + ")");
         }
-        return codeRegistryBuilder;
+    }
+
+    private void registerFieldResolvers(GraphQLCodeRegistry.Builder codeRegistryBuilder,
+                                        TypeDefinitionRegistry typeDefinitionRegistry) {
+        for (GraphQLFieldResolver resolver : resolverRegistry.fieldResolvers()) {
+            verifyFieldExistsInSchema(typeDefinitionRegistry, resolver.parentType(), resolver.fieldName(),
+                    resolver.getClass());
+
+            FieldCoordinates coordinates = FieldCoordinates.coordinates(resolver.parentType(), resolver.fieldName());
+            DataFetcher<Object> dataFetcher = environment -> dispatchField(resolver, environment);
+            codeRegistryBuilder.dataFetcher(coordinates, dataFetcher);
+
+            log.info("Registered GraphQL field presentation '{}.{}' -> {}",
+                    resolver.parentType(), resolver.fieldName(), resolver.getClass().getSimpleName());
+        }
     }
 
     private Object dispatch(GraphQLResolver resolver, DataFetchingEnvironment environment) throws Exception {
@@ -83,17 +104,25 @@ public class GraphQLDispatchController {
         return result;
     }
 
+    // field presentation runs per row of a result - log quietly
+    private Object dispatchField(GraphQLFieldResolver resolver, DataFetchingEnvironment environment) throws Exception {
+        log.debug("Presenting field '{}.{}' via {}",
+                resolver.parentType(), resolver.fieldName(), resolver.getClass().getSimpleName());
+        return resolver.resolve(environment);
+    }
+
     private void verifyFieldExistsInSchema(TypeDefinitionRegistry typeDefinitionRegistry,
                                            String parentType,
-                                           GraphQLResolver resolver) {
+                                           String fieldName,
+                                           Class<?> resolverClass) {
         boolean declared = typeDefinitionRegistry.getType(parentType, ObjectTypeDefinition.class)
                 .map(type -> type.getFieldDefinitions().stream()
-                        .anyMatch(field -> field.getName().equals(resolver.fieldName())))
+                        .anyMatch(field -> field.getName().equals(fieldName)))
                 .orElse(false);
         if (!declared) {
             throw new IllegalStateException(String.format(
                     "%s resolves '%s.%s' but no such field is declared in the GraphQL schema",
-                    resolver.getClass().getName(), parentType, resolver.fieldName()));
+                    resolverClass.getName(), parentType, fieldName));
         }
     }
 }
