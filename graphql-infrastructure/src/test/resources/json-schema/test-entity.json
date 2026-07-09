@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "test-entity",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 2
+    },
+    "score": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    }
+  },
+  "required": ["name"]
+}
