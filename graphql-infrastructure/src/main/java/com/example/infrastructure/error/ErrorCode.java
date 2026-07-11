@@ -12,7 +12,21 @@ public enum ErrorCode {
     INVALID_ARGUMENT(400, "BAD_REQUEST"),
     DUPLICATE_RESOURCE(409, "FAILED_PRECONDITION"),
     RESULT_SET_TOO_LARGE(422, "FAILED_PRECONDITION"),
-    INTERNAL_ERROR(500, "INTERNAL");
+    INTERNAL_ERROR(500, "INTERNAL") {
+        @Override
+        public boolean isServerFault() {
+            return true;
+        }
+    };
+
+    /**
+     * Whether the failure is the server's fault (logged with stack trace) rather than
+     * a client mistake (logged as a warning). Values override this instead of call
+     * sites comparing enum identities.
+     */
+    public boolean isServerFault() {
+        return false;
+    }
 
     private final int httpStatus;
     private final String graphqlErrorType;

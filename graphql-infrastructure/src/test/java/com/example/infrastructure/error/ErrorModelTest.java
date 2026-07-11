@@ -27,6 +27,14 @@ class ErrorModelTest {
     }
 
     @Test
+    void onlyInternalErrorIsAServerFault() {
+        assertThat(ErrorCode.INTERNAL_ERROR.isServerFault()).isTrue();
+        assertThat(ErrorCode.ENTITY_NOT_FOUND.isServerFault()).isFalse();
+        assertThat(ErrorCode.SCHEMA_VALIDATION_FAILED.isServerFault()).isFalse();
+        assertThat(ErrorCode.RESULT_SET_TOO_LARGE.isServerFault()).isFalse();
+    }
+
+    @Test
     void errorDetailMapContainsAllFields() {
         Map<String, Object> map = new ErrorDetail("$.heightCm", "maximum", "too tall").toMap();
         assertThat(map).containsEntry("field", "$.heightCm")

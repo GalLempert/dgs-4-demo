@@ -1,19 +1,38 @@
 package com.example.infrastructure.filter;
 
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.Predicate;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * A parsed, framework-neutral filter: the list of {@link FieldFilter}s and how they
+ * A parsed, GraphQL-neutral filter: the list of {@link FieldFilter}s and how they
  * combine. The default combinator is {@link Combinator#AND} - a row must satisfy every
  * filter - which is the least surprising interpretation of "several filters at once".
  * OR is modeled and ready but not yet exposed through the GraphQL schema.
  */
 public final class FilterCriteria {
 
+    /**
+     * How multiple predicates fold into one WHERE clause. Each value implements the
+     * combination itself (enum-as-strategy) - no conditionals at the call site, and
+     * trivially deserializable if a combinator argument is ever exposed to clients.
+     */
     public enum Combinator {
-        AND,
-        OR
+        AND {
+            @Override
+            public Predicate combine(CriteriaBuilder criteriaBuilder, Predicate[] predicates) {
+                return criteriaBuilder.and(predicates);
+            }
+        },
+        OR {
+            @Override
+            public Predicate combine(CriteriaBuilder criteriaBuilder, Predicate[] predicates) {
+                return criteriaBuilder.or(predicates);
+            }
+        };
+
+        public abstract Predicate combine(CriteriaBuilder criteriaBuilder, Predicate[] predicates);
     }
 
     private static final FilterCriteria NONE = new FilterCriteria(Collections.emptyList(), Combinator.AND);

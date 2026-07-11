@@ -74,7 +74,7 @@ public class GraphQLExceptionHandler implements DataFetcherExceptionHandler {
     private void logFailure(ApiException apiException,
                             Throwable original,
                             DataFetcherExceptionHandlerParameters params) {
-        if (apiException.getErrorCode() == ErrorCode.INTERNAL_ERROR) {
+        if (apiException.getErrorCode().isServerFault()) {
             log.error("Unhandled {} at path {}", original.getClass().getSimpleName(), params.getPath(), original);
             return;
         }

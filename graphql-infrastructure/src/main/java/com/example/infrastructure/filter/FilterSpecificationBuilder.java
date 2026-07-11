@@ -11,8 +11,6 @@ import javax.persistence.criteria.Path;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Turns a {@link FilterCriteria} into a Spring Data JPA {@link Specification} - the
@@ -38,13 +36,10 @@ public class FilterSpecificationBuilder {
             if (criteria.isEmpty()) {
                 return criteriaBuilder.conjunction();
             }
-            List<Predicate> predicates = criteria.getFilters().stream()
+            Predicate[] predicates = criteria.getFilters().stream()
                     .map(filter -> toPredicate(filter, root, criteriaBuilder))
-                    .collect(Collectors.toList());
-            Predicate[] asArray = predicates.toArray(new Predicate[0]);
-            return criteria.getCombinator() == FilterCriteria.Combinator.OR
-                    ? criteriaBuilder.or(asArray)
-                    : criteriaBuilder.and(asArray);
+                    .toArray(Predicate[]::new);
+            return criteria.getCombinator().combine(criteriaBuilder, predicates);
         };
     }
 
