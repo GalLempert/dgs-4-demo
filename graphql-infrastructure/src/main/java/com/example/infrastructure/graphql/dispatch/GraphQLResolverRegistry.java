@@ -1,12 +1,11 @@
 package com.example.infrastructure.graphql.dispatch;
 
 import com.example.infrastructure.graphql.model.AnnotatedFieldResolverFactory;
+import com.example.infrastructure.support.UniqueIndex;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -29,19 +28,15 @@ public class GraphQLResolverRegistry {
     public GraphQLResolverRegistry(List<GraphQLResolver> operationResolvers,
                                    List<GraphQLFieldResolver> fieldResolvers,
                                    AnnotatedFieldResolverFactory annotatedFieldResolverFactory) {
-        Map<String, GraphQLResolver> operations = new LinkedHashMap<>();
-        for (GraphQLResolver resolver : operationResolvers) {
-            putUnique(operations, resolver.operationType().parentTypeName(), resolver.fieldName(), resolver);
-        }
-        this.operationsByCoordinate = Collections.unmodifiableMap(operations);
+        this.operationsByCoordinate = UniqueIndex.byKey(operationResolvers,
+                resolver -> resolver.operationType().parentTypeName() + "." + resolver.fieldName(),
+                "GraphQL resolvers");
 
         List<GraphQLFieldResolver> allFieldResolvers = new ArrayList<>(fieldResolvers);
         allFieldResolvers.addAll(annotatedFieldResolverFactory.createResolvers());
-        Map<String, GraphQLFieldResolver> fields = new LinkedHashMap<>();
-        for (GraphQLFieldResolver resolver : allFieldResolvers) {
-            putUnique(fields, resolver.parentType(), resolver.fieldName(), resolver);
-        }
-        this.fieldResolversByCoordinate = Collections.unmodifiableMap(fields);
+        this.fieldResolversByCoordinate = UniqueIndex.byKey(allFieldResolvers,
+                resolver -> resolver.parentType() + "." + resolver.fieldName(),
+                "GraphQL resolvers");
     }
 
     public Collection<GraphQLResolver> operationResolvers() {
@@ -50,17 +45,5 @@ public class GraphQLResolverRegistry {
 
     public Collection<GraphQLFieldResolver> fieldResolvers() {
         return fieldResolversByCoordinate.values();
-    }
-
-    private static <T> void putUnique(Map<String, T> index, String parentType, String fieldName, T resolver) {
-        String coordinate = parentType + "." + fieldName;
-        T previous = index.put(coordinate, resolver);
-        if (previous != null) {
-            throw new IllegalStateException(String.format(
-                    "Duplicate GraphQL resolvers for '%s': %s and %s",
-                    coordinate,
-                    previous.getClass().getName(),
-                    resolver.getClass().getName()));
-        }
     }
 }

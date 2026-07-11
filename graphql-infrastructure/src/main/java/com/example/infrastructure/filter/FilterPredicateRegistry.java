@@ -1,9 +1,8 @@
 package com.example.infrastructure.filter;
 
+import com.example.infrastructure.support.UniqueIndex;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,18 +18,8 @@ public class FilterPredicateRegistry {
     private final Map<String, FilterPredicateStrategy> strategiesByName;
 
     public FilterPredicateRegistry(List<FilterPredicateStrategy> strategies) {
-        Map<String, FilterPredicateStrategy> index = new LinkedHashMap<>();
-        for (FilterPredicateStrategy strategy : strategies) {
-            FilterPredicateStrategy previous = index.put(strategy.predicateName(), strategy);
-            if (previous != null) {
-                throw new IllegalStateException(String.format(
-                        "Duplicate filter predicates for '%s': %s and %s",
-                        strategy.predicateName(),
-                        previous.getClass().getName(),
-                        strategy.getClass().getName()));
-            }
-        }
-        this.strategiesByName = Collections.unmodifiableMap(index);
+        this.strategiesByName = UniqueIndex.byKey(strategies,
+                FilterPredicateStrategy::predicateName, "filter predicates");
     }
 
     public boolean isPredicate(String name) {

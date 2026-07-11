@@ -1,6 +1,5 @@
 package com.example.infrastructure.filter.predicates;
 
-import com.example.infrastructure.filter.FilterPredicateStrategy;
 import com.example.infrastructure.filter.FilterValueCoercer;
 import org.springframework.stereotype.Component;
 
@@ -11,7 +10,7 @@ import java.util.Map;
 
 /** {@code between: { from: X, to: Y }} (inclusive) - numeric and date fields. */
 @Component
-public class BetweenFilterPredicate implements FilterPredicateStrategy {
+public class BetweenFilterPredicate extends ComparisonFilterPredicate {
 
     @Override
     public String predicateName() {
@@ -19,11 +18,11 @@ public class BetweenFilterPredicate implements FilterPredicateStrategy {
     }
 
     @Override
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings("unchecked")
     public Predicate toPredicate(Path<?> path, Map<String, Object> arguments,
                                  CriteriaBuilder criteriaBuilder, FilterValueCoercer coercer) {
-        Comparable from = (Comparable) coercer.coerce(arguments.get("from"), path.getJavaType());
-        Comparable to = (Comparable) coercer.coerce(arguments.get("to"), path.getJavaType());
-        return criteriaBuilder.between((Path<Comparable>) path, from, to);
+        return criteriaBuilder.between(comparablePath(path),
+                comparableValue(arguments.get("from"), path, coercer),
+                comparableValue(arguments.get("to"), path, coercer));
     }
 }

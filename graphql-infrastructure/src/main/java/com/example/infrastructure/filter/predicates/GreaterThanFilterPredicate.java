@@ -1,6 +1,5 @@
 package com.example.infrastructure.filter.predicates;
 
-import com.example.infrastructure.filter.FilterPredicateStrategy;
 import com.example.infrastructure.filter.FilterValueCoercer;
 import org.springframework.stereotype.Component;
 
@@ -11,7 +10,7 @@ import java.util.Map;
 
 /** {@code greaterThan: { value: X }} - numeric and date fields. */
 @Component
-public class GreaterThanFilterPredicate implements FilterPredicateStrategy {
+public class GreaterThanFilterPredicate extends ComparisonFilterPredicate {
 
     @Override
     public String predicateName() {
@@ -19,10 +18,10 @@ public class GreaterThanFilterPredicate implements FilterPredicateStrategy {
     }
 
     @Override
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings("unchecked")
     public Predicate toPredicate(Path<?> path, Map<String, Object> arguments,
                                  CriteriaBuilder criteriaBuilder, FilterValueCoercer coercer) {
-        Comparable value = (Comparable) coercer.coerce(arguments.get("value"), path.getJavaType());
-        return criteriaBuilder.greaterThan((Path<Comparable>) path, value);
+        return criteriaBuilder.greaterThan(comparablePath(path),
+                comparableValue(arguments.get("value"), path, coercer));
     }
 }
