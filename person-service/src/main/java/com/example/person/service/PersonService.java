@@ -2,6 +2,7 @@ package com.example.person.service;
 
 import com.example.infrastructure.error.DuplicateResourceException;
 import com.example.infrastructure.error.EntityNotFoundException;
+import com.example.infrastructure.filter.FilterCriteria;
 import com.example.person.dal.PersonDal;
 import com.example.person.domain.Person;
 import com.example.person.service.dto.CreatePersonInput;
@@ -41,8 +42,13 @@ public class PersonService {
 
     @Transactional(readOnly = true)
     public List<PersonView> getAllPersons() {
-        List<PersonView> views = toViews(personDal.findAll());
-        log.debug("Fetched {} persons", views.size());
+        return findPersons(FilterCriteria.none());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PersonView> findPersons(FilterCriteria criteria) {
+        List<PersonView> views = toViews(personDal.findAll(criteria));
+        log.debug("Fetched {} persons for {}", views.size(), criteria);
         return views;
     }
 

@@ -20,6 +20,8 @@ class ErrorModelTest {
         assertThat(ErrorCode.INVALID_ARGUMENT.httpStatus()).isEqualTo(400);
         assertThat(ErrorCode.DUPLICATE_RESOURCE.httpStatus()).isEqualTo(409);
         assertThat(ErrorCode.DUPLICATE_RESOURCE.graphqlErrorType()).isEqualTo("FAILED_PRECONDITION");
+        assertThat(ErrorCode.RESULT_SET_TOO_LARGE.httpStatus()).isEqualTo(422);
+        assertThat(ErrorCode.RESULT_SET_TOO_LARGE.graphqlErrorType()).isEqualTo("FAILED_PRECONDITION");
         assertThat(ErrorCode.INTERNAL_ERROR.httpStatus()).isEqualTo(500);
         assertThat(ErrorCode.INTERNAL_ERROR.graphqlErrorType()).isEqualTo("INTERNAL");
     }

@@ -1,25 +1,12 @@
-# Custom scalars registered by the graphql-infrastructure module
-scalar Date
-scalar DateTime
-
-"Output format for temporal fields annotated with @GraphQLTemporal on the model"
-enum DateFormat {
-    ISO
-    UNIX
-    RFC_1123
-}
-
-"An enum code enriched with human-readable data from the enum catalog"
-type EnumValue {
-    code: String!
-    label: String!
-    description: String
-}
+# Common scalars, EnumValue, DateFormat and the *Filter input types come from
+# graphql-infrastructure's schema/common.graphqls - do not redeclare them here.
 
 type Query {
     personById(id: ID!): Person
     allPersons: [Person!]!
     personsByCity(city: String!): [Person!]!
+    "Filtered search; filters combine with AND. Guarded by the query result cap."
+    persons(filter: PersonFilter): [Person!]!
 }
 
 type Mutation {
@@ -115,4 +102,28 @@ input AddressInput {
 input PhoneNumberInput {
     type: PhoneType!
     number: String!
+}
+
+"Which Person fields are filterable, each with its type's predicate set"
+input PersonFilter {
+    firstName: StringFilter
+    lastName: StringFilter
+    email: StringFilter
+    nickname: StringFilter
+    "Filters on the stored enum code, e.g. equals FEMALE"
+    gender: StringFilter
+    salary: FloatFilter
+    heightCm: IntFilter
+    weightKg: FloatFilter
+    active: BooleanFilter
+    birthDate: DateFilter
+    hireDate: DateFilter
+    address: AddressFilter
+}
+
+input AddressFilter {
+    street: StringFilter
+    city: StringFilter
+    zipCode: StringFilter
+    country: StringFilter
 }

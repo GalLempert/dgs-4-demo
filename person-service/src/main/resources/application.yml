@@ -23,6 +23,12 @@ spring:
       enabled: true
       path: /h2-console
 
+# Hard cap for non-paginated queries: filtered/list queries first COUNT the rows
+# they would match and are rejected with RESULT_SET_TOO_LARGE when over this limit.
+graphql:
+  query:
+    max-results: 100
+
 # DEBUG shows the full request flow (dispatch -> validation -> service -> DAL);
 # switch to INFO to keep only the business-level log lines.
 logging:

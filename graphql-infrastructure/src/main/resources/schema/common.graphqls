@@ -1,0 +1,82 @@
+# Shared, domain-agnostic schema shipped by the graphql-infrastructure module.
+# DGS merges every schema/*.graphqls found on the classpath, so domain modules get
+# these types for free and must not redeclare them.
+
+scalar Date
+scalar DateTime
+
+"Output format for temporal fields annotated with @GraphQLTemporal on the model"
+enum DateFormat {
+    ISO
+    UNIX
+    RFC_1123
+}
+
+"An enum code enriched with human-readable data from the enum catalog"
+type EnumValue {
+    code: String!
+    label: String!
+    description: String
+}
+
+# ---------------------------------------------------------------------------
+# Filtering: one filter input per raw type, offering only the predicates that
+# make sense for it (every type has equals; only String has like; ranges exist
+# for numbers and dates). Predicate names map 1:1 to FilterPredicateStrategy
+# beans. Multiple filters in one request combine with AND (a row must match
+# every filter); multiple predicates on one field also combine with AND.
+# ---------------------------------------------------------------------------
+
+input StringFilter {
+    equals: StringValuePredicate
+    notEquals: StringValuePredicate
+    "SQL LIKE with % (any sequence) and _ (one character), e.g. \"Ada%\""
+    like: StringValuePredicate
+    in: StringListPredicate
+}
+input StringValuePredicate { value: String! }
+input StringListPredicate { values: [String!]! }
+
+input IntFilter {
+    equals: IntValuePredicate
+    notEquals: IntValuePredicate
+    greaterThan: IntValuePredicate
+    lessThan: IntValuePredicate
+    "Inclusive on both ends"
+    between: IntRangePredicate
+    in: IntListPredicate
+}
+input IntValuePredicate { value: Int! }
+input IntRangePredicate { from: Int!, to: Int! }
+input IntListPredicate { values: [Int!]! }
+
+input FloatFilter {
+    equals: FloatValuePredicate
+    notEquals: FloatValuePredicate
+    greaterThan: FloatValuePredicate
+    lessThan: FloatValuePredicate
+    "Inclusive on both ends"
+    between: FloatRangePredicate
+    in: FloatListPredicate
+}
+input FloatValuePredicate { value: Float! }
+input FloatRangePredicate { from: Float!, to: Float! }
+input FloatListPredicate { values: [Float!]! }
+
+input DateFilter {
+    equals: DateValuePredicate
+    notEquals: DateValuePredicate
+    greaterThan: DateValuePredicate
+    lessThan: DateValuePredicate
+    "Inclusive on both ends"
+    between: DateRangePredicate
+    in: DateListPredicate
+}
+input DateValuePredicate { value: Date! }
+input DateRangePredicate { from: Date!, to: Date! }
+input DateListPredicate { values: [Date!]! }
+
+input BooleanFilter {
+    equals: BooleanValuePredicate
+}
+input BooleanValuePredicate { value: Boolean! }

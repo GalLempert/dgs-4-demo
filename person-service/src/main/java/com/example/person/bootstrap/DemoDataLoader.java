@@ -33,12 +33,14 @@ public class DemoDataLoader implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        int seeded = 0;
         personService.createPerson(person("Ada", "Lovelace", "ada.lovelace@example.com",
                 LocalDate.of(1985, 12, 10), Gender.FEMALE, "540000.00",
                 LocalDate.of(2015, 3, 1), 168, 58.0,
                 address("Analytical St", 7, "Tel Aviv", "6100000", "Israel"),
                 phone(PhoneType.MOBILE, "+972-50-1234567"),
                 "chess", "mathematics"));
+        seeded++;
 
         personService.createPerson(person("Alan", "Turing", "alan.turing@example.com",
                 LocalDate.of(1990, 6, 23), Gender.MALE, "480000.00",
@@ -46,6 +48,7 @@ public class DemoDataLoader implements CommandLineRunner {
                 address("Enigma Ave", 42, "Haifa", "3300000", "Israel"),
                 phone(PhoneType.WORK, "+972-4-8765432"),
                 "running", "cryptography"));
+        seeded++;
 
         personService.createPerson(person("Grace", "Hopper", "grace.hopper@example.com",
                 LocalDate.of(1978, 12, 9), Gender.FEMALE, "620000.00",
@@ -53,8 +56,9 @@ public class DemoDataLoader implements CommandLineRunner {
                 address("Compiler Blvd", 1, "Tel Aviv", "6100001", "Israel"),
                 phone(PhoneType.HOME, "+972-3-5551234"),
                 "sailing", "teaching", "debugging"));
+        seeded++;
 
-        log.info("Seeded {} demo persons", personService.getAllPersons().size());
+        log.info("Seeded {} demo persons", seeded);
     }
 
     private CreatePersonInput person(String firstName, String lastName, String email,

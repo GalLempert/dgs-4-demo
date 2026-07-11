@@ -25,6 +25,8 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
 │       ├── error              the error model: ApiException, ErrorCode catalog,
 │       │                      ErrorDetail, EntityNotFound / DuplicateResource
 │       ├── error.mapping      ExceptionMapper strategy (pluggable error translation)
+│       ├── filter             FilterParser, FilterSpecificationBuilder (dynamic WHERE),
+│       │                      FilterPredicateStrategy beans, QueryResultCap
 │       ├── validation         JsonSchemaValidationService + SchemaValidationException
 │       └── persistence        BaseEntity (id + audit timestamps)
 ├── graphql-playground         <- domain-agnostic, reusable
@@ -200,6 +202,44 @@ The resulting rule for evolving the API:
 | Extra input constraints | One entry in `json-schema/person-create.json` (no code). |
 | Calculated / derived value | A method in `PersonCalculations` + one setter line in `PersonMapper`. |
 | Custom exposure (formats, enrichment) | An annotation on the view field (`@GraphQLTemporal`, `@GraphQLEnum`) — or a `GraphQLFieldResolver` for bespoke logic. |
+
+## Filtering: typed predicates, dynamic WHERE, hard result cap
+
+Every raw type has a filter input in the shared `schema/common.graphqls` (shipped by
+the infrastructure jar), offering only the predicates that make sense for it:
+`StringFilter` has `equals/notEquals/like/in`, `IntFilter`/`FloatFilter`/`DateFilter`
+add `greaterThan/lessThan/between`, `BooleanFilter` has `equals`. Inside a filter you
+pick the predicate, and each predicate declares its own arguments — `equals` takes
+`{ value }`, `between` takes `{ from, to }`, `in` takes `{ values }`.
+
+A domain exposes filterable fields by composing these types (see `PersonFilter`,
+including the nested `AddressFilter`), and multiple filters combine with **AND** (the
+default; a row must match every filter — OR is modeled in `FilterCriteria` but not yet
+exposed):
+
+```graphql
+{
+  persons(filter: {
+    address:  { city: { equals: { value: "Tel Aviv" } } }
+    heightCm: { between: { from: 160, to: 170 } }
+    lastName: { like: { value: "%ing" } }
+  }) { fullName }
+}
+```
+
+The pipeline is fully generic: the resolver parses the raw argument with
+`FilterParser` into a framework-neutral `FilterCriteria` tree (nested inputs become
+dotted paths like `address.city`), and the DAL turns it into a **dynamically built
+WHERE clause** via `FilterSpecificationBuilder` (JPA criteria `Specification`), with
+values coerced to the entity attribute's Java type (Float→BigDecimal, String→enum).
+Each predicate is a `FilterPredicateStrategy` bean — adding a predicate is one bean
+plus one schema field.
+
+**Hard result cap:** since filters make result sizes unpredictable, every
+non-paginated list query first runs a COUNT with the same WHERE; if the count exceeds
+`graphql.query.max-results` (default 100) the request is rejected *before fetching*
+with a structured `RESULT_SET_TOO_LARGE` (422) error telling the client to narrow the
+filter. The cap also guards `allPersons` and `personsByCity`; `personById` is exempt.
 
 ## Error handling
 
