@@ -6,13 +6,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class InputMapperTest {
+class DeclarativeMapperTest {
 
-    private final InputMapper inputMapper = new InputMapper(new ObjectMapper());
+    private final DeclarativeMapper declarativeMapper = new DeclarativeMapper(new ObjectMapper());
 
     // ------------------------------------------------------------- fixtures
 
@@ -72,7 +73,7 @@ class InputMapperTest {
         input.reference = "ORD-1";
         input.quantity = 3;
 
-        OrderEntity entity = inputMapper.map(input, OrderEntity.class);
+        OrderEntity entity = declarativeMapper.map(input, OrderEntity.class);
 
         assertThat(entity.getReference()).isEqualTo("ORD-1");
         assertThat(entity.getQuantity()).isEqualTo(3);
@@ -84,7 +85,7 @@ class InputMapperTest {
         input.reference = "ORD-2";
         input.quantity = null;
 
-        OrderEntity entity = inputMapper.map(input, OrderEntity.class);
+        OrderEntity entity = declarativeMapper.map(input, OrderEntity.class);
 
         assertThat(entity.getQuantity()).isEqualTo(5);
     }
@@ -95,7 +96,7 @@ class InputMapperTest {
         input.reference = "ORD-3";
         input.unknownToTarget = "does not exist on the entity";
 
-        OrderEntity entity = inputMapper.map(input, OrderEntity.class);
+        OrderEntity entity = declarativeMapper.map(input, OrderEntity.class);
 
         assertThat(entity.getReference()).isEqualTo("ORD-3");
     }
@@ -110,7 +111,7 @@ class InputMapperTest {
         input.reference = "ORD-4";
         input.lines = Arrays.asList(first, second);
 
-        OrderEntity entity = inputMapper.map(input, OrderEntity.class);
+        OrderEntity entity = declarativeMapper.map(input, OrderEntity.class);
 
         assertThat(entity.getLines()).hasSize(2);
         assertThat(entity.getLines().get(0).getSku()).isEqualTo("SKU-A");
@@ -119,12 +120,59 @@ class InputMapperTest {
                 assertThat(line.getOrder()).isSameAs(entity));
     }
 
+    /** View-style target: private fields, getters only - the entity->view direction. */
+    static class OrderView {
+        private String reference;
+        private int quantity;
+        private List<LineView> lines;
+
+        String getReference() {
+            return reference;
+        }
+
+        int getQuantity() {
+            return quantity;
+        }
+
+        List<LineView> getLines() {
+            return lines;
+        }
+    }
+
+    static class LineView {
+        private String sku;
+
+        String getSku() {
+            return sku;
+        }
+    }
+
+    @Test
+    void mapsEntitiesToViewsIncludingNestedCollections() {
+        LineInput line = new LineInput();
+        line.sku = "SKU-C";
+        OrderInput input = new OrderInput();
+        input.reference = "ORD-5";
+        input.quantity = 2;
+        input.lines = Collections.singletonList(line);
+        OrderEntity entity = declarativeMapper.map(input, OrderEntity.class);
+
+        OrderView view = declarativeMapper.map(entity, OrderView.class);
+
+        assertThat(view.getReference()).isEqualTo("ORD-5");
+        assertThat(view.getQuantity()).isEqualTo(2);
+        // children map by name; the @JsonBackReference parent link is not serialized,
+        // so entity->view conversion cannot recurse
+        assertThat(view.getLines()).hasSize(1);
+        assertThat(view.getLines().get(0).getSku()).isEqualTo("SKU-C");
+    }
+
     @Test
     void doesNotMutateTheSharedApplicationObjectMapper() {
         ObjectMapper application = new ObjectMapper();
         int settingsBefore = application.getSerializationConfig().getSerializationInclusion().hashCode();
 
-        new InputMapper(application);
+        new DeclarativeMapper(application);
 
         assertThat(application.getSerializationConfig().getSerializationInclusion().hashCode())
                 .isEqualTo(settingsBefore);

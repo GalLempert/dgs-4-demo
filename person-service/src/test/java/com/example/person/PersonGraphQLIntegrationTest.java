@@ -66,6 +66,24 @@ class PersonGraphQLIntegrationTest {
     }
 
     @Test
+    void simpleFieldsFlowThroughAllLayersWithZeroMappingCode() {
+        // nickname exists only as declarations (schema, input DTO, entity, view) -
+        // no mapper, resolver or service change; the declarative mapping carries it
+        String mutation = "mutation { createPerson(input: { "
+                + "firstName: \"Nick\", lastName: \"Named\", email: \"nick@example.com\", "
+                + "nickname: \"Nicky\", birthDate: \"1992-03-04\", hobbies: [\"testing\"] "
+                + "}) { nickname fullName } }";
+
+        String nickname = dgsQueryExecutor.executeAndExtractJsonPath(mutation, "data.createPerson.nickname");
+        assertThat(nickname).isEqualTo("Nicky");
+
+        // and it is persisted, not just echoed
+        List<String> stored = dgsQueryExecutor.executeAndExtractJsonPath(
+                "{ allPersons { nickname } }", "data.allPersons[*].nickname");
+        assertThat(stored).contains("Nicky");
+    }
+
+    @Test
     void unknownPersonYieldsNotFoundError() {
         ExecutionResult result = dgsQueryExecutor.execute("{ personById(id: \"99999\") { id } }");
         assertThat(result.getErrors()).isNotEmpty();

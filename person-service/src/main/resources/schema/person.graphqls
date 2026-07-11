@@ -35,6 +35,7 @@ type Person {
     "Calculated by the service layer"
     fullName: String!
     email: String!
+    nickname: String
     "Renders in the requested format (@GraphQLTemporal on PersonView)"
     birthDate(format: DateFormat = ISO): String
     "Calculated by the service layer from birthDate"
@@ -90,6 +91,7 @@ input CreatePersonInput {
     firstName: String!
     lastName: String!
     email: String!
+    nickname: String
     birthDate: Date
     gender: Gender
     salary: Float

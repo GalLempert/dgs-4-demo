@@ -12,6 +12,7 @@ public class CreatePersonInput {
     private String firstName;
     private String lastName;
     private String email;
+    private String nickname;
     private LocalDate birthDate;
     private Gender gender;
     private BigDecimal salary;
@@ -45,6 +46,14 @@ public class CreatePersonInput {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getNickname() {
+        return nickname;
+    }
+
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
     }
 
     public LocalDate getBirthDate() {

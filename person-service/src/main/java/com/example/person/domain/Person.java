@@ -40,6 +40,9 @@ public class Person extends BaseEntity {
     @Column(nullable = false, unique = true, length = 128)
     private String email;
 
+    @Column(length = 32)
+    private String nickname;
+
     private LocalDate birthDate;
 
     @Enumerated(EnumType.STRING)
@@ -99,6 +102,14 @@ public class Person extends BaseEntity {
 
     public String getEmail() {
         return email;
+    }
+
+    public String getNickname() {
+        return nickname;
+    }
+
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
     }
 
     public LocalDate getBirthDate() {

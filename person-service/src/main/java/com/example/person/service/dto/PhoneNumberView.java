@@ -4,8 +4,12 @@ import com.example.person.domain.PhoneType;
 
 public class PhoneNumberView {
 
-    private final PhoneType type;
-    private final String number;
+    private PhoneType type;
+    private String number;
+
+    protected PhoneNumberView() {
+        // for declarative mapping
+    }
 
     public PhoneNumberView(PhoneType type, String number) {
         this.type = type;

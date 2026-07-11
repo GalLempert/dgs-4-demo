@@ -2,11 +2,15 @@ package com.example.person.service.dto;
 
 public class AddressView {
 
-    private final String street;
-    private final Integer houseNumber;
-    private final String city;
-    private final String zipCode;
-    private final String country;
+    private String street;
+    private Integer houseNumber;
+    private String city;
+    private String zipCode;
+    private String country;
+
+    protected AddressView() {
+        // for declarative mapping
+    }
 
     public AddressView(String street, Integer houseNumber, String city, String zipCode, String country) {
         this.street = street;

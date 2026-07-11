@@ -74,6 +74,21 @@ class ErrorHandlingIntegrationTest {
     }
 
     @Test
+    void newFieldsGetJsonSchemaConstraintsWithoutCode() {
+        // nickname's 2..32 length rule lives only in person-create.json
+        String mutation = "mutation { createPerson(input: { "
+                + "firstName: \"Nick\", lastName: \"Short\", email: \"n@example.com\", "
+                + "nickname: \"N\", hobbies: [\"testing\"] "
+                + "}) { id } }";
+
+        ExecutionResult result = dgsQueryExecutor.execute(mutation);
+
+        assertThat(result.getErrors()).hasSize(1);
+        assertThat(result.getErrors().get(0).getExtensions().get("literal"))
+                .isEqualTo("SCHEMA_VALIDATION_FAILED");
+    }
+
+    @Test
     void nonNumericIdIsRejectedAsInvalidArgumentNotInternalError() {
         ExecutionResult result = dgsQueryExecutor.execute("{ personById(id: \"not-a-number\") { id } }");
 

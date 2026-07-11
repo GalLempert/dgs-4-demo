@@ -28,6 +28,7 @@ public class PersonView {
     private String lastName;
     private String fullName;
     private String email;
+    private String nickname;
 
     @GraphQLTemporal
     private LocalDate birthDate;
@@ -93,6 +94,14 @@ public class PersonView {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getNickname() {
+        return nickname;
+    }
+
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
     }
 
     public LocalDate getBirthDate() {

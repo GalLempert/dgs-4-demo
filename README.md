@@ -180,14 +180,26 @@ fetcher. One query can request several shapes at once via aliases:
   without touching models or schema. The lookup runs only when the field is selected.
 - Domain modules register their annotated models with one `GraphQLModelSource` bean.
 
-## Declarative input mapping (service layer)
+## Declarative mapping: simple fields cost zero code
 
-`InputMapper` (infrastructure) maps input DTOs onto entities via Jackson by field
-name, so `PersonMapper.toEntity` is a one-liner instead of field-by-field copying.
-Behavior is declared as annotations on the entity: `@JsonManagedReference` /
-`@JsonBackReference` wire each nested `PhoneNumber` back to its `Person` during
-mapping, `@JsonIgnore`/`@JsonAlias` are available for exclusions and renames. Null
-input fields are skipped, so entity field defaults (e.g. `active = true`) survive.
+`DeclarativeMapper` (infrastructure) copies same-shaped objects by field name via
+Jackson in **both directions**: input DTO → entity (`PersonMapper.toEntity` is a
+one-liner) and entity → view (`PersonMapper.toView` only sets the calculated values —
+everything else, including nested address/phones/hobbies, flows automatically).
+Behavior is declared on the classes themselves: `@JsonManagedReference` /
+`@JsonBackReference` wire each nested `PhoneNumber` back to its `Person` (and stop
+recursion when reading entities), `@JsonIgnore`/`@JsonAlias` handle exclusions and
+renames. Null source fields are skipped, so field defaults (e.g. `active = true`)
+survive.
+
+The resulting rule for evolving the API:
+
+| Change | What you write |
+|---|---|
+| **Simple field** (same on GraphQL + DB) | Declarations only: schema line, entity field, input/view field. Zero mapping code — see `nickname`. |
+| Extra input constraints | One entry in `json-schema/person-create.json` (no code). |
+| Calculated / derived value | A method in `PersonCalculations` + one setter line in `PersonMapper`. |
+| Custom exposure (formats, enrichment) | An annotation on the view field (`@GraphQLTemporal`, `@GraphQLEnum`) — or a `GraphQLFieldResolver` for bespoke logic. |
 
 ## Error handling
 

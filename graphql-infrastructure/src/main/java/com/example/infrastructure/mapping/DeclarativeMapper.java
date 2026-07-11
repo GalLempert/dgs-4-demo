@@ -25,13 +25,13 @@ import org.springframework.stereotype.Component;
  * </ul>
  */
 @Component
-public class InputMapper {
+public class DeclarativeMapper {
 
-    private static final Logger log = LoggerFactory.getLogger(InputMapper.class);
+    private static final Logger log = LoggerFactory.getLogger(DeclarativeMapper.class);
 
     private final ObjectMapper mapper;
 
-    public InputMapper(ObjectMapper applicationObjectMapper) {
+    public DeclarativeMapper(ObjectMapper applicationObjectMapper) {
         this.mapper = applicationObjectMapper.copy()
                 .setSerializationInclusion(JsonInclude.Include.NON_NULL)
                 .setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY)
