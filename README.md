@@ -3,6 +3,16 @@
 A demo GraphQL service built with **Netflix DGS 4.9.x** / **graphql-java 17** on
 **Spring Boot 2.4.2**, **Spring Data JPA / Hibernate 5.4**, **Java 11**.
 
+## Documentation
+
+| Doc | What's inside |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | In-depth architecture: modules, the three layers, startup wiring, the full life of a request, design principles, config reference, testing strategy |
+| [docs/EXTENDING.md](docs/EXTENDING.md) | Cookbook: add a field / constraint / calculated value / custom presentation / query / filter predicate / error code / whole domain |
+| [docs/DAL-ALTERNATIVES.md](docs/DAL-ALTERNATIVES.md) | Data-access alternatives to Hibernate/JPA, compared, with a recommendation |
+| [docs/UPGRADE-PERFORMANCE.md](docs/UPGRADE-PERFORMANCE.md) | Expected performance impact of Java / Spring Boot / DGS upgrade milestones |
+| [perf-tests/README.md](perf-tests/README.md) | k6 performance suite: rationale, scenarios, how to run, measured baseline |
+
 ## Module layout — infrastructure vs. domain
 
 The project is split so the generic parts can be reused for future domains:
@@ -21,31 +31,35 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
 │       ├── graphql.error      GraphQLExceptionHandler (global error boundary)
 │       ├── graphql.scalars    TemporalScalar template + Date / DateTime scalars
 │       ├── enums              EnumCatalog + EnumEntry (enum enrichment)
-│       ├── mapping            InputMapper (declarative input->entity mapping)
+│       ├── mapping            DeclarativeMapper (input->entity and entity->view by name)
 │       ├── error              the error model: ApiException, ErrorCode catalog,
-│       │                      ErrorDetail, EntityNotFound / DuplicateResource
+│       │                      ErrorDetail, EntityNotFound / Duplicate / TooManyResults
 │       ├── error.mapping      ExceptionMapper strategy (pluggable error translation)
 │       ├── filter             FilterParser, FilterSpecificationBuilder (dynamic WHERE),
 │       │                      FilterPredicateStrategy beans, QueryResultCap
 │       ├── validation         JsonSchemaValidationService + SchemaValidationException
-│       └── persistence        BaseEntity (id + audit timestamps)
+│       ├── persistence        BaseEntity (id + audit timestamps)
+│       └── support            UniqueIndex (fail-fast strategy registries)
 ├── graphql-playground         <- domain-agnostic, reusable
 │   └── com.example.playground Self-hosted playground UI at /playground (no CDN)
 ├── perf-tests                 <- k6 black-box performance scenarios (see its README)
 └── person-service             <- concrete Person domain, runnable Spring Boot app
     └── com.example.person
-        ├── graphql.query      PersonByIdResolver, AllPersonsResolver, PersonsByCityResolver
+        ├── graphql.query      PersonByIdResolver, AllPersonsResolver,
+        │                      PersonsByCityResolver, PersonsResolver (filtered)
         ├── graphql.mutation   CreatePersonResolver, UpdatePersonSalaryResolver, DeletePersonResolver
         ├── service            PersonService (orchestration + business rules),
         │                      PersonCalculations (pure math), PersonMapper (entity<->dto),
         │                      dto (views / inputs)
-        ├── dal                PersonDal + PersonRepository (Spring Data JPA)
+        ├── dal                PersonDal + PersonRepository (Spring Data JPA + Specifications)
         ├── domain             Person, Address (embedded), PhoneNumber (one-to-many), enums
+        ├── config             PersonGraphQLConfig (model registration), PersonEnumCatalog
         └── bootstrap          DemoDataLoader (seed data)
 ```
 
-To add a new domain later: add a module with its own `schema/*.graphqls` file and a set of
-`GraphQLResolver` beans — nothing in `graphql-infrastructure` changes.
+To add a new domain later: add a module with its own `schema/*.graphqls` file and a
+set of `GraphQLResolver` beans — nothing in `graphql-infrastructure` changes. Full
+recipe: [docs/EXTENDING.md](docs/EXTENDING.md#add-a-whole-new-domain-eg-company).
 
 ## The 3 layers
 
@@ -68,12 +82,16 @@ To add a new domain later: add a module with its own `schema/*.graphqls` file an
    framework-neutral `ApiException`s — services never see GraphQL types.
 
 3. **DAL** — `PersonDal` wraps `PersonRepository` (Spring Data JPA / Hibernate 5). The
-   service layer never touches Spring Data directly.
+   service layer never touches Spring Data directly. Filtered list queries build their
+   WHERE clause dynamically and are guarded by the result cap.
+
+*Read more: the layer boundary rules, startup wiring and a full request walk-through
+are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).*
 
 ## The Person entity
 
-Simple columns (names, email, birth/hire dates, gender enum, salary, active flag,
-height/weight) plus nested structures:
+Simple columns (names, nickname, email, birth/hire dates, gender enum, salary, active
+flag, height/weight) plus nested structures:
 
 - `Address` — `@Embeddable` value object (nested object, stored in `address_*` columns)
 - `PhoneNumber` — `@OneToMany` child entity list
@@ -203,6 +221,8 @@ The resulting rule for evolving the API:
 | Calculated / derived value | A method in `PersonCalculations` + one setter line in `PersonMapper`. |
 | Custom exposure (formats, enrichment) | An annotation on the view field (`@GraphQLTemporal`, `@GraphQLEnum`) — or a `GraphQLFieldResolver` for bespoke logic. |
 
+*Step-by-step recipes for each row: [docs/EXTENDING.md](docs/EXTENDING.md).*
+
 ## Filtering: typed predicates, dynamic WHERE, hard result cap
 
 Every raw type has a filter input in the shared `schema/common.graphqls` (shipped by
@@ -241,6 +261,11 @@ non-paginated list query first runs a COUNT with the same WHERE; if the count ex
 with a structured `RESULT_SET_TOO_LARGE` (422) error telling the client to narrow the
 filter. The cap also guards `allPersons` and `personsByCity`; `personById` is exempt.
 
+*Adding a predicate or making a field filterable:
+[docs/EXTENDING.md](docs/EXTENDING.md#add-a-filter-predicate-eg-startswith). The full
+pipeline (parser → criteria → Specification) is walked through in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#4-the-life-of-a-request).*
+
 ## Error handling
 
 `GraphQLExceptionHandler` (infrastructure) replaces the DGS default handler and is the
@@ -276,6 +301,9 @@ Every GraphQL error therefore has structured `extensions`:
 
 Layering note: services throw framework-neutral `ApiException`s and never see
 GraphQL/DGS types; only the handler knows how to render them.
+
+*Adding an error code or mapping a third-party exception:
+[docs/EXTENDING.md](docs/EXTENDING.md#add-an-error-code--a-new-known-exception).*
 
 ## JSON Schema validation (stronger than the GraphQL schema)
 
