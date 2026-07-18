@@ -9,7 +9,8 @@ A demo GraphQL service built with **Netflix DGS 4.9.x** / **graphql-java 17** on
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | In-depth architecture: modules, the three layers, startup wiring, the full life of a request, design principles, config reference, testing strategy |
 | [docs/EXTENDING.md](docs/EXTENDING.md) | Cookbook: add a field / constraint / calculated value / custom presentation / query / filter predicate / error code / whole domain |
-| [docs/DAL-ALTERNATIVES.md](docs/DAL-ALTERNATIVES.md) | Data-access alternatives to Hibernate/JPA, compared, with a recommendation |
+| [docs/FILTER-COMPOSITION.md](docs/FILTER-COMPOSITION.md) | Agreed design for explicit `and`/`or`/`not` filter composition (not yet implemented) |
+| [docs/DAL-ALTERNATIVES.md](docs/DAL-ALTERNATIVES.md) | Data-access alternatives compared — including staying on Hibernate 6+ — with a revised recommendation |
 | [docs/UPGRADE-PERFORMANCE.md](docs/UPGRADE-PERFORMANCE.md) | Expected performance impact of Java / Spring Boot / DGS upgrade milestones |
 | [perf-tests/README.md](perf-tests/README.md) | k6 performance suite: rationale, scenarios, how to run, measured baseline |
 
@@ -234,8 +235,9 @@ pick the predicate, and each predicate declares its own arguments — `equals` t
 
 A domain exposes filterable fields by composing these types (see `PersonFilter`,
 including the nested `AddressFilter`), and multiple filters combine with **AND** (the
-default; a row must match every filter — OR is modeled in `FilterCriteria` but not yet
-exposed):
+default; a row must match every filter — explicit `and`/`or`/`not` composition is
+designed in [docs/FILTER-COMPOSITION.md](docs/FILTER-COMPOSITION.md) but not yet
+implemented):
 
 ```graphql
 {

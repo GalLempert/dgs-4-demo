@@ -13,10 +13,18 @@ touches only **six files** — `Person`, `Address`, `PhoneNumber`, `BaseEntity`
 (annotations) and `PersonRepository` + `PersonDal`. The service, mapper, GraphQL and
 validation layers see only DTOs. Swapping the DAL is a contained migration by design.
 
+> **Update (post-filtering):** since this document was first written, the project
+> gained the dynamic filtering system, whose WHERE clauses are built as **JPA criteria
+> `Specification`s** (`FilterSpecificationBuilder`, `JpaSpecificationExecutor`). That
+> adds a seventh JPA-coupled surface — and a heavyweight one. See
+> [Staying with Hibernate 6+](#staying-with-hibernate-6-and-up) and the revised
+> recommendation.
+
 ## The candidates
 
 | | Type | Spring Data style? | Runs on Boot 2.7 / 3 / 4 |
 |---|---|---|---|
+| **Stay on JPA / Hibernate 6+** | full ORM — the incumbent, upgraded | ✅ Spring Data JPA unchanged | ✅ (5.6) / ✅ / ✅ |
 | **Spring Data JDBC** | aggregate-oriented mapper, no ORM machinery | ✅ native | ✅ / ✅ / ✅ |
 | **MyBatis** | SQL mapper (you write all SQL) | ⚠️ own mapper style; `mybatis-spring-boot-starter` | ✅ / ✅ / ✅ |
 | **jOOQ** | typesafe SQL DSL + code generation | ⚠️ no repositories; integrates with Spring tx | ✅ / ✅ / ✅ |
@@ -42,6 +50,55 @@ validation layers see only DTOs. Swapping the DAL is a contained migration by de
 Note the first column of "❌ change tracking / lazy loading": for JPA dislikers these
 are usually **features**, not gaps — no session to manage, no `LazyInitializationException`
 (we already hit one in this project), no surprise UPDATE statements.
+
+One row this table cannot show, because only JPA has it: **`Specification` /
+Criteria-API support** — the mechanism our dynamic filter system is built on. Spring
+Data JDBC has *no* Specification equivalent (Query-by-Example only, which cannot
+express ranges, LIKE patterns or nested paths); MyBatis/JDBI/JdbcTemplate would need
+hand-built dynamic SQL; jOOQ is the one non-JPA option with a first-class dynamic
+query DSL.
+
+## Staying with Hibernate 6 and up
+
+The option of *not leaving*: upgrade with Boot 3 and take Hibernate 6.x as the
+provider, keeping Spring Data JPA and the entire programming model unchanged.
+
+**What you gain**
+
+- **Zero DAL migration.** The six persistence files and the filter pipeline
+  (`FilterSpecificationBuilder`, `JpaSpecificationExecutor`, `Path.getJavaType()`
+  coercion) keep working as-is. Every alternative below requires rebuilding the
+  dynamic-WHERE mechanism; this one doesn't.
+- **A genuinely better engine than the Hibernate 5 you dislike.** 6.x rewrote the
+  query engine (SQM) and JDBC layer: fewer allocations, saner generated SQL (no more
+  useless joins in many mapping shapes), consistent Criteria/HQL semantics. 6.2+ adds
+  first-class JSON/array column mapping and better batch fetching. Read paths that
+  hydrate nested collections — our `allPersons` shape — are where the improvement is
+  typically measurable (see [UPGRADE-PERFORMANCE.md](UPGRADE-PERFORMANCE.md)).
+- The largest community/docs/tooling of any option here, and the path Spring Boot
+  tests against by default.
+
+**What it costs**
+
+- The 5→6 migration is real, if smaller than a DAL swap: `javax`→`jakarta` imports
+  (comes with Boot 3 regardless), sequence/id-generation default changes, stricter
+  type handling (`Instant`/`Duration`/enum mappings), some HQL/Criteria behavior
+  fixes that were silently lenient in 5. Budget a day plus the test suite, not an
+  afternoon.
+- You keep the ORM mental model you were skeptical of: persistence context, dirty
+  checking, lazy loading (and its `LazyInitializationException`s — though our
+  in-transaction DTO mapping already fences that off).
+- If the dislike of Hibernate 6 is about *specific* early-6.0 regressions: most were
+  ironed out by 6.2/6.4; Boot 3.2+ manages those lines.
+
+## Effort vs. the filtering system (summary)
+
+| Option | DAL migration | Dynamic filtering |
+|---|---|---|
+| Hibernate 6+ (stay) | none (5→6 behavior fixes only) | **keeps working unchanged** |
+| Spring Data JDBC | small | **must be rebuilt** (no Specifications) — realistically on jOOQ or hand-built SQL |
+| jOOQ | medium (codegen setup) | rebuilt naturally — jOOQ's `Condition` tree is a 1:1 target for `FilterCriteria` |
+| MyBatis / JDBI / JdbcTemplate | medium | rebuilt as hand-written dynamic SQL — the weakest fit |
 
 ## Ease of use
 
@@ -119,20 +176,25 @@ infrastructure, all tests except wiring.
   most build setup.
 - **JDBI/JdbcTemplate**: rewrite `PersonDal` with SQL + row mappers and manual
   aggregation of phones/hobbies. No new dependency concepts, most hand-written code.
+- **Hibernate 6+ (stay)**: none of the above — apply the 5→6 migration notes when
+  Boot 3 arrives and re-run the test + k6 suites. The filter system is untouched.
 
-## Recommendation
+## Recommendation (revised after the filtering system)
 
-For this project's stated preferences — Spring Data yes, ORM no:
+The original recommendation predated the dynamic filter system; the calculus has
+shifted because filtering is built on JPA `Specification`s:
 
-1. **Spring Data JDBC** as the default choice. It keeps the exact programming model
-   you like (repositories, derived queries, auditing), deletes the entire
-   ORM/session mental model, has first-party Spring support on every Boot version in
-   the upgrade path, and its one real weakness (child-collection selects on list
-   queries) is fixable per-query where it matters.
-2. **Add jOOQ selectively** if/when queries outgrow derived methods — the two
-   coexist happily (repositories for CRUD, jOOQ for reporting/complex reads).
-3. Choose **MyBatis** instead only if the team prefers *all* SQL to be explicit and
-   external (or already knows MyBatis) — it's proven and popular but trades Spring
-   Data ergonomics for hand-written mapping.
-4. **EclipseLink** only if you discover you *do* want JPA semantics and merely
-   dislike Hibernate — expect to maintain the integration yourself.
+1. **If the dislike of Hibernate 6 is soft** (fear of the 5→6 migration rather than
+   rejection of ORM): **stay and upgrade to Hibernate 6.x with Boot 3.** It is the
+   only option with zero DAL work, it keeps the filtering infrastructure byte-for-byte
+   unchanged, and 6.x fixes many of the reasons people disliked 5. Re-validate with
+   the existing tests and k6 thresholds.
+2. **If leaving ORM is firm**: **Spring Data JDBC for CRUD + jOOQ for the filter
+   path.** Spring Data JDBC alone cannot host the dynamic WHERE system (no
+   Specifications) — pairing it with jOOQ gives the filter builder a natural new
+   target (`FilterPredicateStrategy` maps 1:1 onto jOOQ `Condition`s), at the cost of
+   codegen setup and a second persistence concept in the codebase.
+3. **MyBatis** only if the team wants *all* SQL explicit and external (or already
+   knows it) — and accept hand-building the dynamic filter SQL.
+4. **EclipseLink** only if you want JPA semantics but not Hibernate — you keep
+   Specifications, but maintain the Boot integration yourself.
