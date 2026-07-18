@@ -1,114 +1,126 @@
 # Filtering
 
-Filtering narrows the collection returned by the `persons` query.  It is useful when
-you know characteristics of the people you need, such as a city, an employment
-status, or a salary range.  The server translates the filter into the database query;
-clients do not need to retrieve every person and filter the response themselves.
+Filtering narrows a collection before the platform returns it. Use it when you know
+something about the records you need—for example, a status, a date range, a category,
+or a value threshold. The platform applies the filter while retrieving the data, so a
+client does not need to request a broad collection and discard unwanted records
+locally.
+
+This page explains the filtering **concept**. The field names, collection name, and
+filter type in the examples are intentionally illustrative. Always use the schema
+exposed by the API for the fields, filter type, and predicates available for the
+resource you are querying.
+
+## The filter shape
+
+A filter has three parts:
+
+1. **A filterable field**, such as `status` or `metadata.category`.
+2. **A predicate** supported by that field's type, such as `equals` or `between`.
+3. **Predicate arguments**, such as `{ value: "PUBLISHED" }`.
+
+In this illustrative query, the filter means “return records whose status is
+published”:
 
 ```graphql
-query PeopleInTelAviv {
-  persons(filter: {
-    address: { city: { equals: { value: "Tel Aviv" } } }
+query PublishedItems {
+  items(filter: {
+    status: { equals: { value: "PUBLISHED" } }
   }) {
     id
-    fullName
-    address { city }
+    title
+    status
   }
 }
 ```
 
-The `filter` argument is optional.  Omitting it returns the same collection as an
-unfiltered `persons` query, subject to the platform's result cap.  A filter only
-affects which `Person` records are returned; it does not change the fields you may
-select in the response.
+Predicates are objects rather than shorthand values so every comparison has an
+unambiguous shape. Single-value predicates use `value`, ranges use `from` and `to`,
+and membership predicates use `values`.
 
-## Start with the filter shape
+## Discover what is filterable
 
-Every filter has three layers:
+Filtering is opt-in. A resource exposes a dedicated filter input in the GraphQL
+schema; only the fields in that input can be filtered. The schema also restricts each
+field to the predicates that make sense for its data type.
 
-1. **A filterable field**, for example `salary` or `address.city`.
-2. **A predicate** supported by that field's type, such as `greaterThan` or `like`.
-3. **The predicate arguments**, such as `{ value: 500000 }`.
+For example, an illustrative filter input might look like this:
 
-For example, this reads as “people whose salary is greater than 500,000”:
+```graphql
+input ItemFilter {
+  title: StringFilter
+  status: StringFilter
+  score: FloatFilter
+  publishedOn: DateFilter
+  enabled: BooleanFilter
+  metadata: MetadataFilter
+}
+
+input MetadataFilter {
+  category: StringFilter
+}
+```
+
+This shape permits filters such as `title`, `score`, or `metadata.category`. It does
+not imply that every response field is filterable. Derived values, related lists,
+audit information, identifiers, and fields omitted from the filter input cannot be
+used as filters unless the schema explicitly exposes them.
+
+Use the playground's schema explorer or GraphQL introspection when you are unsure.
+The schema is the authoritative contract for the resource currently being queried.
+An unsupported field or predicate is rejected as invalid GraphQL input; it is never
+silently ignored.
+
+## Predicates
+
+The platform provides typed predicate inputs. The exact schema determines which ones
+a particular field exposes, but the common predicate set is:
+
+| Predicate | Argument shape | Meaning |
+|---|---|---|
+| `equals` | `{ value: … }` | Matches one exact value. |
+| `notEquals` | `{ value: … }` | Excludes one exact value. |
+| `in` | `{ values: […] }` | Matches any value in a supplied set. |
+| `greaterThan` | `{ value: … }` | Matches values strictly above a bound. |
+| `lessThan` | `{ value: … }` | Matches values strictly below a bound. |
+| `between` | `{ from: …, to: … }` | Matches an inclusive range. |
+| `like` | `{ value: "…" }` | Matches a text pattern. |
+
+`equals` is available wherever the schema supports filtering. `like` is intended for
+text fields. Comparison and range predicates are intended for ordered types such as
+numbers and dates. Boolean fields generally support exact equality only.
+
+### Exact values and membership
+
+Use `equals` when there is one known value. Use `in` when a single field may match
+one of several alternatives.
 
 ```graphql
 {
-  persons(filter: {
-    salary: { greaterThan: { value: 500000 } }
+  items(filter: {
+    enabled: { equals: { value: true } }
+    status: { in: { values: ["PUBLISHED", "SCHEDULED"] } }
   }) {
-    fullName
-    salary
+    id
+    title
   }
 }
 ```
-
-The predicate is deliberately an object rather than a shorthand value.  This keeps
-the API consistent: single-value predicates use `value`, range predicates use `from`
-and `to`, and membership predicates use `values`.
-
-## What can be filtered
-
-`PersonFilter` exposes the following stored Person fields:
-
-| Field | Filter type | Notes |
-|---|---|---|
-| `firstName`, `lastName`, `email`, `nickname` | `StringFilter` | Text matching and membership. |
-| `gender` | `StringFilter` | Supply the stored enum code, for example `FEMALE`. |
-| `salary`, `weightKg` | `FloatFilter` | Numeric comparisons and ranges. |
-| `heightCm` | `IntFilter` | Integer comparisons and ranges. |
-| `active` | `BooleanFilter` | Exact true/false matching. |
-| `birthDate`, `hireDate` | `DateFilter` | Use ISO dates such as `"1985-12-10"`. |
-| `address.street`, `address.city`, `address.zipCode`, `address.country` | `StringFilter` | Place the field beneath `address`. |
-
-Only fields declared in `PersonFilter` and `AddressFilter` are filterable.  Calculated
-response fields such as `fullName`, `age`, `monthlyNetSalary`, `yearsOfService`, and
-`bmi` are not filters.  Neither are `id`, phone numbers, hobbies, audit timestamps,
-or `address.houseNumber`.  If a field is not in the filter input shown by schema
-introspection, the API will reject it instead of silently ignoring it.
-
-## Predicates by type
-
-Use the predicate that expresses the question directly.  GraphQL only presents the
-predicates valid for a field's filter type.
-
-| Filter type | Available predicates | Meaning |
-|---|---|---|
-| `StringFilter` | `equals`, `notEquals`, `like`, `in` | Exact comparison, SQL-pattern match, or one-of-many match. |
-| `IntFilter`, `FloatFilter`, `DateFilter` | `equals`, `notEquals`, `greaterThan`, `lessThan`, `between`, `in` | Exact comparison, exclusive bounds, inclusive range, or one-of-many match. |
-| `BooleanFilter` | `equals` | Exact true/false comparison. |
-
-### Exact value and membership
-
-```graphql
-{
-  persons(filter: {
-    active: { equals: { value: true } }
-    gender: { equals: { value: "FEMALE" } }
-    firstName: { in: { values: ["Ada", "Grace"] } }
-  }) {
-    fullName
-    gender { code label }
-  }
-}
-```
-
-Use `in` when a field may match one of several values.  It is clearer and more
-compact than trying to express alternatives with several `equals` predicates.
 
 ### Ranges and bounds
 
-`greaterThan` and `lessThan` are exclusive.  `between` includes both endpoints.
+`greaterThan` and `lessThan` are exclusive: the bound itself does not match.
+`between` is inclusive: both endpoints match.
 
 ```graphql
 {
-  persons(filter: {
-    heightCm: { between: { from: 160, to: 170 } }
-    hireDate: { greaterThan: { value: "2020-01-01" } }
+  items(filter: {
+    score: { between: { from: 70, to: 90 } }
+    publishedOn: { greaterThan: { value: "2025-01-01" } }
   }) {
-    fullName
-    heightCm
-    hireDate
+    id
+    score
+    publishedOn
   }
 }
 ```
@@ -117,80 +129,84 @@ For an open range, combine bounds on the same field:
 
 ```graphql
 {
-  persons(filter: {
-    salary: {
-      greaterThan: { value: 500000 }
-      lessThan: { value: 700000 }
+  items(filter: {
+    score: {
+      greaterThan: { value: 70 }
+      lessThan: { value: 90 }
     }
   }) {
-    fullName
-    salary
+    id
+    score
   }
 }
 ```
 
 ### Text patterns
 
-`like` uses SQL `LIKE` syntax: `%` means any sequence of characters and `_` means
-exactly one character.  Matching behavior such as case sensitivity is determined by
-the database collation, so do not rely on `like` for portable case-insensitive search.
+`like` uses SQL `LIKE` pattern syntax: `%` represents any sequence of characters and
+`_` represents exactly one character.
 
 ```graphql
 {
-  persons(filter: {
-    lastName: { like: { value: "%ing" } }
+  items(filter: {
+    title: { like: { value: "Guide%" } }
   }) {
-    fullName
+    id
+    title
   }
 }
 ```
 
-Choose `equals` when you know the full value.  Use `like` only when pattern matching
-is intentional, and prefer a specific prefix or suffix over a leading `%` when you
-can; broad patterns can be substantially more expensive for a database to evaluate.
+Use `equals` when the complete value is known. Use `like` only when pattern matching
+is intentional. Database collation controls details such as case sensitivity, so
+clients should not assume `like` is portable case-insensitive search. Broad patterns,
+especially those beginning with `%`, can be expensive to evaluate.
 
-## Combining conditions: implicit AND
+## Combining conditions
 
-All supplied conditions are combined with **AND**:
+All conditions supplied in one filter are combined with **AND**:
 
 - Different fields must all match.
-- Multiple predicates on one field must all match.
-- Nested fields participate in the same AND.
+- Multiple predicates on the same field must all match.
+- Nested fields participate in the same condition set.
 
-This query returns only people in Tel Aviv **and** taller than 166 cm:
+The following illustrative query returns records that are in the `guides` category
+**and** have a score above 80:
 
 ```graphql
 {
-  persons(filter: {
-    address: { city: { equals: { value: "Tel Aviv" } } }
-    heightCm: { greaterThan: { value: 166 } }
+  items(filter: {
+    metadata: { category: { equals: { value: "guides" } } }
+    score: { greaterThan: { value: 80 } }
   }) {
-    fullName
-    heightCm
-    address { city }
+    id
+    title
+    score
   }
 }
 ```
 
-There is currently no `or`, `and`, or `not` field in the public filter inputs.  Do
-not assume that repeating a field creates an OR condition; GraphQL input-object fields
-are unique, and multiple predicates on that field are ANDed.  For a same-field
-alternative, use `in`.  The planned design for explicit, recursive `and`/`or`/`not`
-composition is documented in [Filter composition](FILTER-COMPOSITION.md), but it is
-not implemented and must not be sent to the API yet.
+Do not assume that repeating a field creates an OR condition: GraphQL input-object
+fields are unique, and multiple predicates on one field are ANDed. For alternatives
+on the same field, use `in`.
+
+Explicit `and`, `or`, and `not` composition is not currently part of the public
+filter inputs. Its planned design is described in
+[Filter composition](FILTER-COMPOSITION.md), but those fields must not be sent to the
+API until they are added to the schema.
 
 ## Use variables for dynamic filters
 
-Variables keep values separate from the query text and make one operation reusable.
-Declare the variable as `PersonFilter` and pass the same filter object in the request
-variables.
+Variables keep filter values separate from the operation text, making an operation
+reusable and avoiding query-string construction from user input. Declare the
+resource's filter input type, then provide the filter in the request variables.
 
 ```graphql
-query FindPeople($filter: PersonFilter) {
-  persons(filter: $filter) {
+query FindItems($filter: ItemFilter) {
+  items(filter: $filter) {
     id
-    fullName
-    salary
+    title
+    score
   }
 }
 ```
@@ -198,52 +214,47 @@ query FindPeople($filter: PersonFilter) {
 ```json
 {
   "filter": {
-    "active": { "equals": { "value": true } },
-    "salary": { "between": { "from": 500000, "to": 700000 } }
+    "enabled": { "equals": { "value": true } },
+    "score": { "between": { "from": 70, "to": 90 } }
   }
 }
 ```
 
-This is especially important for application code: use GraphQL variables rather than
-building a query string from user input.
+Replace `ItemFilter` with the concrete filter input named by the API schema.
 
-## Result cap and empty results
+## Result limits and empty results
 
-List queries are intentionally non-paginated in this demo.  Before fetching a list,
-the platform counts the rows that the filter would match.  If the count exceeds
-`graphql.query.max-results` (100 by default), the request is rejected with the
-structured `RESULT_SET_TOO_LARGE` error rather than materializing an unbounded
-response.  Narrow the filter and retry when this occurs.
+Collection queries are protected by a configurable result cap. Before fetching the
+records, the platform counts how many rows the filter would match. If that count is
+above the configured limit, the request is rejected with a structured
+`RESULT_SET_TOO_LARGE` error instead of materializing an unbounded response. Narrow
+the filter and retry when this occurs.
 
-The cap also applies to `allPersons` and `personsByCity`; `personById` is exempt.  A
-valid filter that matches no people is not an error: `persons` returns an empty list.
+A valid filter that matches no records is not an error; the collection is returned as
+an empty list. The precise result-limit setting and the queries it applies to are
+part of the API's operational contract.
 
 ## Effective filtering checklist
 
-- Start with the most selective stored field you have, then add only conditions that
-  are required for the result.
-- Use `equals` for exact values, `between` for inclusive ranges, and `in` for a set
-  of alternatives on one field.
-- Treat `greaterThan` and `lessThan` as exclusive; use `between` when endpoint
-  inclusion matters.
-- Send dates in `YYYY-MM-DD` format and enum codes such as `FEMALE`, not display
-  labels.
-- Use `like` sparingly and deliberately; `%` and `_` are wildcards, not literal
-  characters.
-- Expect every supplied condition to narrow the result because conditions are ANDed.
-- Use variables for user-provided values, and narrow a query if it hits the result
-  cap.
-- Inspect the schema in the playground when in doubt: it is the authoritative list
-  of currently filterable fields and valid predicate shapes.
+- Consult the schema before writing a filter; it defines the available fields,
+  types, and predicates.
+- Start with the most selective field available, then add only conditions required
+  for the result.
+- Use `equals` for exact values, `between` for inclusive ranges, and `in` for
+  same-field alternatives.
+- Treat `greaterThan` and `lessThan` as exclusive.
+- Supply values in the scalar format required by the schema—for example, ISO dates
+  where a `Date` scalar is expected.
+- Treat `%` and `_` in a `like` value as wildcards, not literal characters.
+- Expect every condition to narrow the result because the default combination is
+  AND.
+- Use GraphQL variables for dynamic or user-provided values.
+- Narrow a query and retry if it reaches the result cap.
 
 ## How filtering is processed
 
-The API validates the GraphQL input shape first.  It then parses nested inputs into
-field paths (for example, `address.city`), combines the supplied predicates into a
-criteria set, converts values to the underlying attribute types where needed, and
-builds the database `WHERE` clause.  The count used for the result cap uses that same
-filter, so the cap reflects the records the final query would return.
-
-For implementation details or guidance on adding a predicate or filterable field, see
-[Extending the service](EXTENDING.md#add-a-filter-predicate-eg-startswith).  For the
-future composition design, see [Filter composition](FILTER-COMPOSITION.md).
+The platform validates the GraphQL input shape, parses nested inputs into field paths,
+combines the supplied predicates into a criteria set, converts values to the
+underlying attribute types when necessary, and builds the data-store query. The
+result-limit count uses the same criteria as the collection query, so it reflects the
+records that the final query would return.
