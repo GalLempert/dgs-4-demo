@@ -11,9 +11,9 @@ A demo GraphQL service built with Netflix DGS 4.9.x / graphql-java 17 on Spring 
 ```bash
 mvn package                          # build everything + run all tests
 mvn test                             # run all tests (unit + Spring Boot integration tests, all via surefire)
-mvn test -pl person-service          # tests for one module
-mvn test -pl person-service -Dtest=PersonGraphQLIntegrationTest              # single test class
-mvn test -pl person-service -Dtest=PersonCalculationsTest#calculatesAge      # single test method
+mvn test -pl person-service -am      # tests for one module (-am builds required sibling modules)
+mvn test -pl person-service -am -Dtest=PersonGraphQLIntegrationTest          # single test class
+mvn test -pl person-service -am -Dtest=PersonCalculationsTest#ageIsWholeYearsSinceBirthDate  # single test method
 java -jar person-service/target/person-service-1.0.0-SNAPSHOT.jar            # run the app
 ```
 
