@@ -209,6 +209,7 @@ identities.
 | Property | Default | Meaning |
 |---|---|---|
 | `graphql.query.max-results` | `100` | result cap for non-paginated list queries (COUNT-first) |
+| `graphql.response.omit-null-fields` | `false` | when `true`, null-valued fields are dropped from response JSON entirely (key and value) instead of the spec-mandated explicit `null` |
 | `graphql.playground.enabled` | `true` | serve the self-hosted playground |
 | `graphql.playground.path` | `/playground` | playground URL |
 | `graphql.playground.endpoint` | `/graphql` | endpoint the playground targets |

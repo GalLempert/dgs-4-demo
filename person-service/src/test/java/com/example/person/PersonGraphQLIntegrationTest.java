@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -81,6 +82,21 @@ class PersonGraphQLIntegrationTest {
         List<String> stored = dgsQueryExecutor.executeAndExtractJsonPath(
                 "{ allPersons { nickname } }", "data.allPersons[*].nickname");
         assertThat(stored).contains("Nicky");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void nullFieldsRenderAsExplicitNullsByDefault() {
+        // graphql.response.omit-null-fields defaults to false: per the GraphQL spec a
+        // requested field with a null value keeps its key ("nickname": null)
+        ExecutionResult result = dgsQueryExecutor.execute(
+                "{ personsByCity(city: \"Haifa\") { firstName nickname } }");
+
+        assertThat(result.getErrors()).isEmpty();
+        Map<String, Object> data = (Map<String, Object>) result.toSpecification().get("data");
+        List<Map<String, Object>> persons = (List<Map<String, Object>>) data.get("personsByCity");
+        assertThat(persons).isNotEmpty()
+                .allSatisfy(person -> assertThat(person).containsEntry("nickname", null));
     }
 
     @Test

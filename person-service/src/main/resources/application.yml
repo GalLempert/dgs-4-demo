@@ -28,6 +28,11 @@ spring:
 graphql:
   query:
     max-results: 100
+  # When true, fields whose value is null are omitted from response JSON entirely
+  # (key and value, recursively). Off by default: the GraphQL spec requires every
+  # requested field to appear with an explicit null.
+  response:
+    omit-null-fields: false
 
 # DEBUG shows the full request flow (dispatch -> validation -> service -> DAL);
 # switch to INFO to keep only the business-level log lines.
