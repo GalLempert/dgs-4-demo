@@ -41,28 +41,43 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
 │       ├── filter             FilterParser, FilterSpecificationBuilder (dynamic WHERE),
 │       │                      FilterPredicateStrategy beans, QueryResultCap
 │       ├── validation         JsonSchemaValidationService + SchemaValidationException
-│       ├── persistence        BaseEntity (id + audit timestamps)
+│       ├── persistence        BaseEntity (id + audit timestamps),
+│       │                      ReplicatedEntity (+ replication sequence, soft delete)
+│       ├── replication        the complete replicated-resource stack: ReplicatedRepository,
+│       │                      ReplicatedDal (+Support), ReplicatedResourceService,
+│       │                      ReplicationResolverFactory, ReplicationSequences, ReplicationPage
 │       └── support            UniqueIndex (fail-fast strategy registries)
 ├── graphql-playground         <- domain-agnostic, reusable
 │   └── com.example.playground Self-hosted playground UI at /playground (no CDN)
 ├── perf-tests                 <- k6 black-box performance scenarios (see its README)
+├── company-service            <- second, deliberately minimal domain: shows how much a
+│   └── com.example.company    domain inherits (its four standard queries are pure
+│       ├── domain             wiring - CompanyDal and CompanyRepository are empty
+│       ├── dal                subclasses, CompanyService only maps entity->view,
+│       ├── service            CompanyGraphQLConfig registers factory-made resolvers)
+│       ├── graphql            createCompany / deleteCompany mutation resolvers
+│       ├── config             CompanyGraphQLConfig (model + 4 one-line query beans)
+│       └── bootstrap          CompanyDataLoader (seed data)
 └── person-service             <- concrete Person domain, runnable Spring Boot app
-    └── com.example.person
-        ├── graphql.query      PersonByIdResolver, AllPersonsResolver,
-        │                      PersonsByCityResolver, PersonsResolver (filtered)
+    └── com.example.person     (composes company-service in; declares base Query/Mutation)
+        ├── graphql.query      PersonByIdResolver, AllPersonsResolver, PersonsByCityResolver
+        │                      (the standard filtered/replication queries are factory-made)
         ├── graphql.mutation   CreatePersonResolver, UpdatePersonSalaryResolver, DeletePersonResolver
-        ├── service            PersonService (orchestration + business rules),
-        │                      PersonCalculations (pure math), PersonMapper (entity<->dto),
-        │                      dto (views / inputs)
-        ├── dal                PersonDal + PersonRepository (Spring Data JPA + Specifications)
+        ├── service            PersonService (business rules; standard behavior inherited
+        │                      from ReplicatedResourceService), PersonCalculations (pure math),
+        │                      PersonMapper (entity<->dto), dto (views / inputs)
+        ├── dal                PersonDal (extends ReplicatedDal) + PersonRepository
         ├── domain             Person, Address (embedded), PhoneNumber (one-to-many), enums
-        ├── config             PersonGraphQLConfig (model registration), PersonEnumCatalog
+        ├── config             PersonGraphQLConfig (model registration + 4 one-line query beans),
+        │                      PersonEnumCatalog
         └── bootstrap          DemoDataLoader (seed data)
 ```
 
 To add a new domain later: add a module with its own `schema/*.graphqls` file and a
-set of `GraphQLResolver` beans — nothing in `graphql-infrastructure` changes. Full
-recipe: [docs/EXTENDING.md](docs/EXTENDING.md#add-a-whole-new-domain-eg-company).
+set of `GraphQLResolver` beans — nothing in `graphql-infrastructure` changes.
+`company-service` is the living example: its filtered list, replication feed, count
+and max-sequence queries are entirely inherited from the infrastructure. Full recipe:
+[docs/EXTENDING.md](docs/EXTENDING.md#add-a-whole-new-domain-eg-company).
 
 ## The 3 layers
 

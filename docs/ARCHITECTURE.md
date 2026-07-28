@@ -14,7 +14,10 @@ dgs-demo (parent POM: dependency management, version-conflict resolution)
 │
 ├── graphql-infrastructure      domain-agnostic library. Knows NOTHING about Person.
 ├── graphql-playground          domain-agnostic self-hosted playground UI (/playground)
-├── person-service              the concrete domain + the runnable Spring Boot app
+├── company-service             second, minimal domain: proves the reuse (its standard
+│                               queries are entirely inherited from the infrastructure)
+├── person-service              the concrete Person domain + the runnable Spring Boot
+│                               app (composes company-service in)
 └── perf-tests                  k6 black-box load scenarios (not a Maven module)
 ```
 

@@ -98,15 +98,24 @@ your enum service — same `EnumCatalog` interface. Models, schema, resolvers un
 
 ## Add a whole new domain (e.g. Company)
 
-1. New Maven module depending on `graphql-infrastructure` (+ `graphql-playground` if
-   wanted); or a package in an existing app module.
+The `company-service` module IS this recipe, executed — copy it. In short:
+
+1. New Maven module depending on `graphql-infrastructure`; add it as a dependency of
+   the runnable app module so its beans and schema are composed in (the app class
+   already scans `com.example` for components, entities and repositories).
 2. `schema/company.graphqls` — types, queries, mutations, `CompanyFilter` composed
-   from the shared filter inputs.
-3. Entity/entities extending `BaseEntity`; repository (+ `JpaSpecificationExecutor`
-   for filtering); a DAL wrapping it with the `QueryResultCap`.
-4. Service + views (annotate with `@GraphQLModel("Company")` and register via one
-   `GraphQLModelSource` bean); `DeclarativeMapper` for the pass-through mapping.
-5. `GraphQLResolver` beans for each operation; JSON schemas under `json-schema/`.
+   from the shared filter inputs. Use `extend type Query` / `extend type Mutation`:
+   the base types are declared once, by the hosting app's domain schema.
+3. Entity extending `ReplicatedEntity` (or `BaseEntity` if the domain should not be
+   replicable); repository extending `ReplicatedRepository<X>`; DAL extending
+   `ReplicatedDal<X>` (a 2-line constructor names the resource and its DB sequence).
+4. Service extending `ReplicatedResourceService<X, XView>` — implement `toView`;
+   views annotated with `@GraphQLModel("Company")` and registered via one
+   `GraphQLModelSource` bean; `DeclarativeMapper` for the pass-through mapping.
+5. The four standard queries (filtered list, replication feed, count, max sequence)
+   are one `@Bean` each via `ReplicationResolverFactory` — see `CompanyGraphQLConfig`.
+   Hand-written `GraphQLResolver` beans only for domain-specific operations
+   (mutations, special lookups); JSON schemas under `json-schema/` as needed.
 
 Nothing in `graphql-infrastructure` changes — that's the acceptance test for the
 module split.

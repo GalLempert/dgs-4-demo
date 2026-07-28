@@ -1,0 +1,68 @@
+# Company domain schema, merged by DGS with every other schema/*.graphqls on the
+# classpath. The base Query/Mutation types are declared by the hosting app's domain
+# schema (person.graphqls), so this file extends them. Common scalars, EnumValue,
+# DateFormat and the *Filter inputs come from graphql-infrastructure.
+
+extend type Query {
+    "Filtered search; filters combine with AND. Guarded by the query result cap."
+    companies(filter: CompanyFilter): [Company!]!
+
+    """
+    Replication feed for companies - same protocol as personsBySequence: the next
+    bulkSize rows strictly after the given sequence, split into updated / deleted /
+    filteredOutIds, with nextSequence as the resume point.
+    """
+    companiesBySequence(sequence: Long!, bulkSize: Int!, filter: CompanyFilter): CompanyReplicationPage!
+
+    "Counts matching companies; soft-deleted rows are excluded unless includeDeleted."
+    countCompaniesByFilter(filter: CompanyFilter, includeDeleted: Boolean = false): Int!
+
+    "Highest replication sequence in the company table (0 when empty)."
+    companyMaxSequence: Long!
+}
+
+extend type Mutation {
+    createCompany(input: CreateCompanyInput!): Company!
+    "Soft delete: the company disappears from regular queries and travels through the feed"
+    deleteCompany(id: ID!): Boolean!
+}
+
+type Company {
+    id: ID!
+    name: String!
+    industry: String
+    city: String
+    employeeCount: Int
+    foundedYear: Int
+    "Renders in the requested format (@GraphQLTemporal on CompanyView)"
+    createdAt(format: DateFormat = ISO): String
+    "Replication sequence, re-assigned on every write; drives the companiesBySequence feed"
+    sequence: Long!
+    "Soft-delete marker; deleted companies appear only in the replication feed"
+    deleted: Boolean!
+}
+
+"One page of the companiesBySequence replication feed"
+type CompanyReplicationPage {
+    updated: [Company!]!
+    deleted: [Company!]!
+    filteredOutIds: [ID!]!
+    nextSequence: Long!
+}
+
+input CreateCompanyInput {
+    name: String!
+    industry: String
+    city: String
+    employeeCount: Int
+    foundedYear: Int
+}
+
+"Which Company fields are filterable, each with its type's predicate set"
+input CompanyFilter {
+    name: StringFilter
+    industry: StringFilter
+    city: StringFilter
+    employeeCount: IntFilter
+    foundedYear: IntFilter
+}

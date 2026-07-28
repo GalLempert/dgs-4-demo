@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.example</groupId>
+        <artifactId>dgs-demo</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>company-service</artifactId>
+    <name>company-service</name>
+    <description>
+        Second demo domain (Company), deliberately minimal: it exists to show how much a
+        domain module inherits from graphql-infrastructure. The whole replicated-resource
+        stack (filtered query, replication feed, count, max sequence, soft delete) is
+        subclassing plus bean wiring - no resolver, DAL or service logic of its own.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>graphql-infrastructure</artifactId>
+        </dependency>
+    </dependencies>
+</project>

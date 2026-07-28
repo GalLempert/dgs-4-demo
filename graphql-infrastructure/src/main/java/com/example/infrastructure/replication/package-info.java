@@ -8,10 +8,27 @@
  * resuming from the highest sequence of each page. Because deletes are soft, a
  * deletion is just another change the poll picks up.
  *
- * <p>{@link com.example.infrastructure.replication.ReplicationSequences} allocates the
- * sequence numbers from native database sequences;
- * {@link com.example.infrastructure.replication.ReplicationPage} is the page a feed
- * query returns and knows how to partition a fetched batch into updated / deleted /
- * filtered-out. Domain modules only wire these into their DAL and resolvers.
+ * <p>The whole stack of the four standard queries (filtered list, feed page, count,
+ * max sequence) ships here, one layer per class - a domain module only subclasses and
+ * wires beans:
+ *
+ * <ul>
+ *   <li>{@link com.example.infrastructure.replication.ReplicatedRepository} - Spring
+ *       Data base interface with the feed queries; extend it with the entity type.</li>
+ *   <li>{@link com.example.infrastructure.replication.ReplicatedDal} - complete DAL
+ *       (capped filtered reads, feed reads, sequence stamping on save, soft-delete
+ *       visibility rules); subclass names the resource and its DB sequence, taking
+ *       {@link com.example.infrastructure.replication.ReplicatedDalSupport} in the
+ *       constructor.</li>
+ *   <li>{@link com.example.infrastructure.replication.ReplicatedResourceService} -
+ *       complete service layer (feed orchestration and partitioning, counting, soft
+ *       delete); subclass supplies the entity-to-view mapping.</li>
+ *   <li>{@link com.example.infrastructure.replication.ReplicationResolverFactory} -
+ *       manufactures the four query resolvers; the domain registers one
+ *       {@code @Bean} per schema field.</li>
+ *   <li>{@link com.example.infrastructure.replication.ReplicationSequences} /
+ *       {@link com.example.infrastructure.replication.ReplicationPage} - sequence
+ *       allocation and the page/partitioning contract, used by the classes above.</li>
+ * </ul>
  */
 package com.example.infrastructure.replication;

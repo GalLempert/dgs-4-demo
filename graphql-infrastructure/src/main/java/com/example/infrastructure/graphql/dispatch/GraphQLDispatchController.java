@@ -12,6 +12,7 @@ import graphql.schema.idl.TypeDefinitionRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -111,18 +112,29 @@ public class GraphQLDispatchController {
         return resolver.resolve(environment);
     }
 
+    /**
+     * The field may be declared on the base type or contributed by an
+     * {@code extend type} block - domain modules other than the one declaring the base
+     * Query/Mutation type add their operations through extensions.
+     */
     private void verifyFieldExistsInSchema(TypeDefinitionRegistry typeDefinitionRegistry,
                                            String parentType,
                                            String fieldName,
                                            Class<?> resolverClass) {
         boolean declared = typeDefinitionRegistry.getType(parentType, ObjectTypeDefinition.class)
-                .map(type -> type.getFieldDefinitions().stream()
-                        .anyMatch(field -> field.getName().equals(fieldName)))
-                .orElse(false);
+                .map(type -> hasField(type, fieldName))
+                .orElse(false)
+                || typeDefinitionRegistry.objectTypeExtensions()
+                        .getOrDefault(parentType, Collections.emptyList()).stream()
+                        .anyMatch(extension -> hasField(extension, fieldName));
         if (!declared) {
             throw new IllegalStateException(String.format(
                     "%s resolves '%s.%s' but no such field is declared in the GraphQL schema",
                     resolverClass.getName(), parentType, fieldName));
         }
+    }
+
+    private static boolean hasField(ObjectTypeDefinition type, String fieldName) {
+        return type.getFieldDefinitions().stream().anyMatch(field -> field.getName().equals(fieldName));
     }
 }

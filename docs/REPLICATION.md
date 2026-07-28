@@ -85,15 +85,34 @@ loop:
 
 ## Where the pieces live
 
-| Piece | Location |
-|---|---|
-| `sequence` + `deleted` columns | `ReplicatedEntity` (infrastructure, extends `BaseEntity`) |
-| Sequence allocation (`person_replication_seq`) | `ReplicationSequences` (infrastructure), invoked by `PersonDal.save` |
-| Page partitioning + smart next-sequence contract | `ReplicationPage` (infrastructure) |
-| `Long` scalar (sequences overflow 32-bit `Int`) | `LongScalar` + `schema/common.graphqls` (infrastructure) |
-| Feed fetch, matching-ids re-check, count, max | `PersonDal` / `PersonService` |
-| The three resolvers | `person-service` `graphql/query/` |
+The **entire stack of the four standard queries ships in `graphql-infrastructure`**,
+one layer per class:
 
-A new domain opts in by extending `ReplicatedEntity`, stamping sequences in its DAL's
-`save`, and declaring its own `<Resource>ReplicationPage` type + the three fields on
-`Query` — the infrastructure pieces are domain-agnostic.
+| Layer | Infrastructure class | What a domain does |
+|---|---|---|
+| Entity | `ReplicatedEntity` (`sequence` + `deleted` columns) | `class Company extends ReplicatedEntity` |
+| Repository | `ReplicatedRepository<E>` (feed queries, `maxSequence`) | `interface CompanyRepository extends ReplicatedRepository<Company> { }` |
+| DAL | `ReplicatedDal<E>` (capped filtered reads, feed reads, sequence stamping on save, soft-delete visibility) + `ReplicatedDalSupport` | subclass names the resource + DB sequence in a 2-line constructor |
+| Service | `ReplicatedResourceService<E, V>` (feed orchestration/partitioning, count, max sequence, `softDelete`) | subclass implements `toView(entity)` |
+| Resolvers | `ReplicationResolverFactory` (manufactures all four query resolvers) | one `@Bean` per schema field, one line each |
+| Protocol | `ReplicationSequences`, `ReplicationPage`, `LongScalar` + `scalar Long` | nothing — used internally |
+
+The `person-service` and `company-service` modules are both wired exactly this way;
+`company-service` is the minimal reference (its DAL and repository bodies are empty).
+
+## Adding a replicated domain (what `company-service` actually contains)
+
+1. Entity extends `ReplicatedEntity`.
+2. `interface XRepository extends ReplicatedRepository<X> { }`
+3. `class XDal extends ReplicatedDal<X>` — constructor calls
+   `super("X", "x_replication_seq", repository, support)`.
+4. `class XService extends ReplicatedResourceService<X, XView>` — implements
+   `toView`; add domain-specific operations (e.g. creation) as needed.
+5. A `@Configuration` with one `@Bean GraphQLResolver` per standard query, built by
+   `ReplicationResolverFactory` (`filteredList` / `bySequence` / `countByFilter` /
+   `maxSequence`) + a `GraphQLModelSource` bean for the view class.
+6. `schema/<domain>.graphqls` declaring the fields (via `extend type Query` when
+   another module already declares the base type), the `<X>ReplicationPage` type, and
+   the `<X>Filter` input.
+
+No resolver, DAL, or service logic is written for the four queries themselves.

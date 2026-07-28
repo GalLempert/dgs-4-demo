@@ -1,21 +1,21 @@
-package com.example.person.graphql.mutation;
+package com.example.company.graphql;
 
 import com.example.infrastructure.graphql.arguments.GraphQLArgumentMapper;
 import com.example.infrastructure.graphql.dispatch.GraphQLOperationType;
 import com.example.infrastructure.graphql.dispatch.GraphQLResolver;
-import com.example.person.service.PersonService;
+import com.example.company.service.CompanyService;
 import graphql.schema.DataFetchingEnvironment;
 import org.springframework.stereotype.Component;
 
-/** Handles {@code Mutation.deletePerson}. */
+/** Handles {@code Mutation.deleteCompany} - the soft delete inherited from the infrastructure. */
 @Component
-public class DeletePersonResolver implements GraphQLResolver {
+public class DeleteCompanyResolver implements GraphQLResolver {
 
-    private final PersonService personService;
+    private final CompanyService companyService;
     private final GraphQLArgumentMapper argumentMapper;
 
-    public DeletePersonResolver(PersonService personService, GraphQLArgumentMapper argumentMapper) {
-        this.personService = personService;
+    public DeleteCompanyResolver(CompanyService companyService, GraphQLArgumentMapper argumentMapper) {
+        this.companyService = companyService;
         this.argumentMapper = argumentMapper;
     }
 
@@ -26,11 +26,11 @@ public class DeletePersonResolver implements GraphQLResolver {
 
     @Override
     public String fieldName() {
-        return "deletePerson";
+        return "deleteCompany";
     }
 
     @Override
     public Object resolve(DataFetchingEnvironment environment) {
-        return personService.softDelete(argumentMapper.longArgument(environment, "id"));
+        return companyService.softDelete(argumentMapper.longArgument(environment, "id"));
     }
 }

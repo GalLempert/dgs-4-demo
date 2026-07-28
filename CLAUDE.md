@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A demo GraphQL service built with Netflix DGS 4.9.x / graphql-java 17 on Spring Boot 2.4.2, Spring Data JPA / Hibernate 5.4, Java 11. Multi-module Maven project split into a reusable, domain-agnostic GraphQL infrastructure and a concrete Person domain.
+A demo GraphQL service built with Netflix DGS 4.9.x / graphql-java 17 on Spring Boot 2.4.2, Spring Data JPA / Hibernate 5.4, Java 11. Multi-module Maven project split into a reusable, domain-agnostic GraphQL infrastructure and two concrete domains (Person, plus a deliberately minimal Company domain that demonstrates the reuse).
 
 ## Commands
 
@@ -29,7 +29,9 @@ Detailed docs exist and should be consulted before structural changes: `docs/ARC
 
 - `graphql-infrastructure` — domain-agnostic library. **Must compile and make sense with zero knowledge of any domain.** Ships contracts (`GraphQLResolver`, `FilterPredicateStrategy`, `EnumCatalog`, `ExceptionMapper`), machinery (dispatch, JSON-schema validation, filtering, declarative mapping, error rendering), and shared schema `schema/common.graphqls` (DGS merges every `schema/*.graphqls` on the classpath, including inside jars).
 - `graphql-playground` — domain-agnostic self-hosted playground UI.
-- `person-service` — the runnable Spring Boot app: entities, DTOs, `PersonService`, thin resolvers, seed data. A new domain is added as another module contributing beans + its own `schema/*.graphqls`; the infrastructure discovers them via Spring DI and nothing in it changes.
+- `company-service` — second, deliberately minimal domain proving the reuse: its four standard queries (filtered list, replication feed, count, max sequence) are entirely inherited — `CompanyRepository`/`CompanyDal` are empty subclasses, `CompanyService` only supplies entity→view mapping, and `CompanyGraphQLConfig` registers four factory-made resolver beans. Its schema uses `extend type Query`/`extend type Mutation` (only the hosting app's domain declares the base types).
+- `person-service` — the runnable Spring Boot app (composes `company-service` in; its application class widens `@EntityScan`/`@EnableJpaRepositories` to `com.example` so sibling domain modules are discovered): entities, DTOs, `PersonService`, thin resolvers, seed data. A new domain is added as another module contributing beans + its own `schema/*.graphqls`; the infrastructure discovers them via Spring DI and nothing in it changes.
+- **Replicated resources**: entities that extend `ReplicatedEntity` get the whole replication stack (see `docs/REPLICATION.md`) from the infrastructure `replication` package: `ReplicatedRepository` → `ReplicatedDal` → `ReplicatedResourceService` → `ReplicationResolverFactory`. A domain wires them with empty/near-empty subclasses plus one `@Bean` per standard query field. Every write stamps a fresh per-table sequence; deletes are soft (`softDelete`) and regular reads exclude deleted rows.
 - Every infrastructure package has a `package-info.java` stating its purpose — keep these current.
 
 ### The three layers and their boundary rules
