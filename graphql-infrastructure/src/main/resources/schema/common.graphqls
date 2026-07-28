@@ -4,6 +4,8 @@
 
 scalar Date
 scalar DateTime
+"64-bit signed integer (GraphQL's built-in Int is 32-bit); used for replication sequences"
+scalar Long
 
 "Output format for temporal fields annotated with @GraphQLTemporal on the model"
 enum DateFormat {

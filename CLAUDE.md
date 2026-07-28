@@ -23,7 +23,7 @@ java -jar person-service/target/person-service-1.0.0-SNAPSHOT.jar            # r
 
 ## Architecture
 
-Detailed docs exist and should be consulted before structural changes: `docs/ARCHITECTURE.md` (module split, startup wiring, life of a request), `docs/EXTENDING.md` (step-by-step recipes for adding fields, filters, predicates, error codes, whole domains), `docs/FILTERING.md`, `docs/FILTER-COMPOSITION.md` (designed but NOT yet implemented), `docs/DAL-ALTERNATIVES.md`, `docs/UPGRADE-PERFORMANCE.md`.
+Detailed docs exist and should be consulted before structural changes: `docs/ARCHITECTURE.md` (module split, startup wiring, life of a request), `docs/EXTENDING.md` (step-by-step recipes for adding fields, filters, predicates, error codes, whole domains), `docs/FILTERING.md`, `docs/FILTER-COMPOSITION.md` (designed but NOT yet implemented), `docs/REPLICATION.md` (sequence-based replication feed: `personsBySequence`, soft deletes, filtered replication), `docs/DAL-ALTERNATIVES.md`, `docs/UPGRADE-PERFORMANCE.md`.
 
 ### Module split (the core invariant)
 

@@ -56,6 +56,9 @@ public class PersonView {
     @GraphQLTemporal
     private LocalDateTime createdAt;
 
+    private Long sequence;
+    private boolean deleted;
+
     public Long getId() {
         return id;
     }
@@ -222,5 +225,21 @@ public class PersonView {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Long getSequence() {
+        return sequence;
+    }
+
+    public void setSequence(Long sequence) {
+        this.sequence = sequence;
+    }
+
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
     }
 }
