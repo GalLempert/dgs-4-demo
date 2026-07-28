@@ -6,9 +6,9 @@ import java.time.LocalDateTime;
  * Base view DTO carrying the technical fields every resource exposes - the GraphQL-side
  * mirror of {@link com.example.infrastructure.persistence.BaseEntity} and the backing
  * model of the {@code Resource} schema interface (declared in {@code common.graphqls}).
- * Domain views extend this (or {@code ReplicatedResourceView}) so id, audit timestamps
- * and the optimistic-locking version are declared once, in one hierarchy, and the
- * declarative mapper carries them from any {@code BaseEntity} subclass by name.
+ * Domain views extend this so id, audit timestamps, the optimistic-locking version and
+ * the replication fields (sequence, deleted) are declared once, and the declarative
+ * mapper carries them from any {@code BaseEntity} subclass by name.
  */
 public abstract class ResourceView {
 
@@ -20,6 +20,9 @@ public abstract class ResourceView {
 
     @GraphQLTemporal
     private LocalDateTime updatedAt;
+
+    private Long sequence;
+    private boolean deleted;
 
     public Long getId() {
         return id;
@@ -51,5 +54,21 @@ public abstract class ResourceView {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Long getSequence() {
+        return sequence;
+    }
+
+    public void setSequence(Long sequence) {
+        this.sequence = sequence;
+    }
+
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
     }
 }

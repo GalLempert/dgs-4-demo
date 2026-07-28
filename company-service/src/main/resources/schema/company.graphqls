@@ -27,8 +27,8 @@ extend type Mutation {
     deleteCompany(id: ID!): Boolean!
 }
 
-"Implements the shared technical-truth interfaces: same id/version/timestamps/sequence/deleted shape as every other resource"
-type Company implements ReplicatedResource & Resource {
+"Implements the shared technical-truth interface: same id/version/timestamps/sequence/deleted shape as every other resource"
+type Company implements Resource {
     id: ID!
     "Optimistic-locking counter, incremented on every update"
     version: Long!

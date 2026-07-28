@@ -1,6 +1,6 @@
 package com.example.person.domain;
 
-import com.example.infrastructure.persistence.ReplicatedEntity;
+import com.example.infrastructure.persistence.BaseEntity;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import javax.persistence.CascadeType;
@@ -25,13 +25,13 @@ import java.util.Set;
 /**
  * Aggregate root of the person domain. Mixes simple columns, an embedded value object
  * ({@link Address}), a one-to-many child collection ({@link PhoneNumber}) and an element
- * collection (hobbies). Extends {@link ReplicatedEntity}: every write bumps the row's
+ * collection (hobbies). Extends {@link BaseEntity}: every write bumps the row's
  * replication sequence and deletes are soft, so the person table can be replicated
  * through the {@code personsBySequence} feed.
  */
 @Entity
 @Table(name = "person")
-public class Person extends ReplicatedEntity {
+public class Person extends BaseEntity {
 
     @Column(nullable = false, length = 64)
     private String firstName;

@@ -3,7 +3,7 @@ package com.example.person.service;
 import com.example.infrastructure.error.DuplicateResourceException;
 import com.example.infrastructure.error.EntityNotFoundException;
 import com.example.infrastructure.filter.FilterCriteria;
-import com.example.infrastructure.replication.ReplicatedResourceService;
+import com.example.infrastructure.replication.ResourceService;
 import com.example.person.dal.PersonDal;
 import com.example.person.domain.Person;
 import com.example.person.service.dto.CreatePersonInput;
@@ -19,12 +19,12 @@ import java.util.List;
 /**
  * Business layer of the person domain. The standard behavior of a replicated resource
  * (filtered find, replication feed, count, max sequence, soft delete) is inherited
- * from {@link ReplicatedResourceService}; this class adds the person-specific rules
+ * from {@link ResourceService}; this class adds the person-specific rules
  * (email uniqueness, salary updates, city lookup) and the view mapping enriched by
  * {@link PersonCalculations} through the {@link PersonMapper}.
  */
 @Service
-public class PersonService extends ReplicatedResourceService<Person, PersonView> {
+public class PersonService extends ResourceService<Person, PersonView> {
 
     private static final Logger log = LoggerFactory.getLogger(PersonService.class);
 

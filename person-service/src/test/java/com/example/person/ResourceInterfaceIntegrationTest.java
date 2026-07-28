@@ -11,11 +11,11 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The shared technical-truth hierarchy: Person and Company both implement the
- * Resource / ReplicatedResource schema interfaces, so the technical fields (id,
- * version, createdAt, updatedAt, sequence, deleted) exist with identical shapes on
- * every resource and can even be selected through interface fragments. The Java side
- * mirrors it: BaseEntity -> ReplicatedEntity and ResourceView -> ReplicatedResourceView.
+ * The shared technical truth: every resource is a replicated resource, so Person and
+ * Company both implement the single Resource schema interface and the technical fields
+ * (id, version, createdAt, updatedAt, sequence, deleted) exist with identical shapes
+ * on every resource and can even be selected through interface fragments. The Java
+ * side mirrors it: every entity extends BaseEntity, every view extends ResourceView.
  */
 @SpringBootTest
 class ResourceInterfaceIntegrationTest {
@@ -29,11 +29,9 @@ class ResourceInterfaceIntegrationTest {
         // the same interface fragments work on both resource types
         ExecutionResult result = dgsQueryExecutor.execute(
                 "{ persons(filter: { firstName: { equals: { value: \"Ada\" } } }) { "
-                        + "... on Resource { id version createdAt updatedAt } "
-                        + "... on ReplicatedResource { sequence deleted } } "
+                        + "... on Resource { id version createdAt updatedAt sequence deleted } } "
                         + "companies(filter: { name: { equals: { value: \"Initech\" } } }) { "
-                        + "... on Resource { id version createdAt updatedAt } "
-                        + "... on ReplicatedResource { sequence deleted } } }");
+                        + "... on Resource { id version createdAt updatedAt sequence deleted } } }");
 
         assertThat(result.getErrors()).isEmpty();
         Map<String, Object> data = (Map<String, Object>) result.toSpecification().get("data");

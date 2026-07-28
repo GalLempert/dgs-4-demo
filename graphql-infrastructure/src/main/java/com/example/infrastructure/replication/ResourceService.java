@@ -4,7 +4,7 @@ import com.example.infrastructure.error.ApiException;
 import com.example.infrastructure.error.ErrorCode;
 import com.example.infrastructure.error.ErrorDetail;
 import com.example.infrastructure.filter.FilterCriteria;
-import com.example.infrastructure.persistence.ReplicatedEntity;
+import com.example.infrastructure.persistence.BaseEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  *
  * <pre>{@code
  * @Service
- * public class CompanyService extends ReplicatedResourceService<Company, CompanyView> {
+ * public class CompanyService extends ResourceService<Company, CompanyView> {
  *     public CompanyService(CompanyDal dal, DeclarativeMapper mapper) { ... }
  *     protected CompanyView toView(Company company) { ... }
  * }
@@ -34,13 +34,13 @@ import java.util.stream.Collectors;
  * materialized during view mapping (the subclass must be a Spring bean for the
  * transaction proxy to apply).
  */
-public abstract class ReplicatedResourceService<E extends ReplicatedEntity, V> {
+public abstract class ResourceService<E extends BaseEntity, V> {
 
-    private static final Logger log = LoggerFactory.getLogger(ReplicatedResourceService.class);
+    private static final Logger log = LoggerFactory.getLogger(ResourceService.class);
 
-    private final ReplicatedDal<E> replicatedDal;
+    private final ResourceDal<E> replicatedDal;
 
-    protected ReplicatedResourceService(ReplicatedDal<E> replicatedDal) {
+    protected ResourceService(ResourceDal<E> replicatedDal) {
         this.replicatedDal = replicatedDal;
     }
 
@@ -120,7 +120,7 @@ public abstract class ReplicatedResourceService<E extends ReplicatedEntity, V> {
      * dynamically built WHERE clause used everywhere else.
      */
     private Set<Long> matchingIds(List<E> batch, FilterCriteria criteria) {
-        List<Long> ids = batch.stream().map(ReplicatedEntity::getId).collect(Collectors.toList());
+        List<Long> ids = batch.stream().map(BaseEntity::getId).collect(Collectors.toList());
         if (batch.isEmpty() || criteria.isEmpty()) {
             return new HashSet<>(ids);
         }

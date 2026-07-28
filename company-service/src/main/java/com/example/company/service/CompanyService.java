@@ -1,7 +1,7 @@
 package com.example.company.service;
 
 import com.example.infrastructure.mapping.DeclarativeMapper;
-import com.example.infrastructure.replication.ReplicatedResourceService;
+import com.example.infrastructure.replication.ResourceService;
 import com.example.company.dal.CompanyDal;
 import com.example.company.domain.Company;
 import com.example.company.service.dto.CompanyView;
@@ -13,12 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Business layer of the company domain. Find / replication feed / count / max
- * sequence / soft delete are inherited from {@link ReplicatedResourceService}; the
+ * sequence / soft delete are inherited from {@link ResourceService}; the
  * only domain-specific operation is creation, and even that is pure declarative
  * mapping (no calculated fields in this domain).
  */
 @Service
-public class CompanyService extends ReplicatedResourceService<Company, CompanyView> {
+public class CompanyService extends ResourceService<Company, CompanyView> {
 
     private static final Logger log = LoggerFactory.getLogger(CompanyService.class);
 

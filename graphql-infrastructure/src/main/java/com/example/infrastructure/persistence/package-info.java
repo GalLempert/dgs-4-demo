@@ -1,8 +1,8 @@
 /**
  * Common JPA building blocks:
- * {@link com.example.infrastructure.persistence.BaseEntity} with surrogate id and
- * audit timestamps, and {@link com.example.infrastructure.persistence.ReplicatedEntity}
- * adding the replication sequence and soft-delete flag for entities exposed through a
- * replication feed.
+ * {@link com.example.infrastructure.persistence.BaseEntity} carries the technical
+ * truth every resource has - surrogate id, audit timestamps, optimistic-locking
+ * version, and (since every resource is a replicated resource) the replication
+ * sequence and soft-delete flag.
  */
 package com.example.infrastructure.persistence;

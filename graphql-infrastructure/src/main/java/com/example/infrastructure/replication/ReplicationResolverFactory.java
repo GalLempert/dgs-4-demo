@@ -43,22 +43,22 @@ public class ReplicationResolverFactory {
     }
 
     /** {@code <resources>(filter)} - filtered list of live resources. */
-    public GraphQLResolver filteredList(String fieldName, ReplicatedResourceService<?, ?> service) {
+    public GraphQLResolver filteredList(String fieldName, ResourceService<?, ?> service) {
         return new FilteredListResolver(fieldName, service, filterParser);
     }
 
     /** {@code <resources>BySequence(sequence, bulkSize, filter)} - the replication feed. */
-    public GraphQLResolver bySequence(String fieldName, ReplicatedResourceService<?, ?> service) {
+    public GraphQLResolver bySequence(String fieldName, ResourceService<?, ?> service) {
         return new BySequenceResolver(fieldName, service, filterParser, argumentMapper);
     }
 
     /** {@code count<Resources>ByFilter(filter, includeDeleted)} - count without fetching. */
-    public GraphQLResolver countByFilter(String fieldName, ReplicatedResourceService<?, ?> service) {
+    public GraphQLResolver countByFilter(String fieldName, ResourceService<?, ?> service) {
         return new CountByFilterResolver(fieldName, service, filterParser);
     }
 
     /** {@code <resource>MaxSequence} - the feed's current tail. */
-    public GraphQLResolver maxSequence(String fieldName, ReplicatedResourceService<?, ?> service) {
+    public GraphQLResolver maxSequence(String fieldName, ResourceService<?, ?> service) {
         return new MaxSequenceResolver(fieldName, service);
     }
 
@@ -66,9 +66,9 @@ public class ReplicationResolverFactory {
     private abstract static class ReplicationQueryResolver implements GraphQLResolver {
 
         private final String fieldName;
-        final ReplicatedResourceService<?, ?> service;
+        final ResourceService<?, ?> service;
 
-        ReplicationQueryResolver(String fieldName, ReplicatedResourceService<?, ?> service) {
+        ReplicationQueryResolver(String fieldName, ResourceService<?, ?> service) {
             this.fieldName = fieldName;
             this.service = service;
         }
@@ -88,7 +88,7 @@ public class ReplicationResolverFactory {
 
         private final FilterParser filterParser;
 
-        FilteredListResolver(String fieldName, ReplicatedResourceService<?, ?> service, FilterParser filterParser) {
+        FilteredListResolver(String fieldName, ResourceService<?, ?> service, FilterParser filterParser) {
             super(fieldName, service);
             this.filterParser = filterParser;
         }
@@ -104,7 +104,7 @@ public class ReplicationResolverFactory {
         private final FilterParser filterParser;
         private final GraphQLArgumentMapper argumentMapper;
 
-        BySequenceResolver(String fieldName, ReplicatedResourceService<?, ?> service,
+        BySequenceResolver(String fieldName, ResourceService<?, ?> service,
                            FilterParser filterParser, GraphQLArgumentMapper argumentMapper) {
             super(fieldName, service);
             this.filterParser = filterParser;
@@ -124,7 +124,7 @@ public class ReplicationResolverFactory {
 
         private final FilterParser filterParser;
 
-        CountByFilterResolver(String fieldName, ReplicatedResourceService<?, ?> service, FilterParser filterParser) {
+        CountByFilterResolver(String fieldName, ResourceService<?, ?> service, FilterParser filterParser) {
             super(fieldName, service);
             this.filterParser = filterParser;
         }
@@ -139,7 +139,7 @@ public class ReplicationResolverFactory {
 
     private static final class MaxSequenceResolver extends ReplicationQueryResolver {
 
-        MaxSequenceResolver(String fieldName, ReplicatedResourceService<?, ?> service) {
+        MaxSequenceResolver(String fieldName, ResourceService<?, ?> service) {
             super(fieldName, service);
         }
 

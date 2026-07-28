@@ -1,13 +1,13 @@
 package com.example.company.dal;
 
-import com.example.infrastructure.replication.ReplicatedRepository;
+import com.example.infrastructure.replication.ResourceRepository;
 import com.example.company.domain.Company;
 import org.springframework.stereotype.Repository;
 
 /**
  * Nothing to declare: filtering runs through {@code JpaSpecificationExecutor} and the
- * replication feed queries are inherited from {@link ReplicatedRepository}.
+ * replication feed queries are inherited from {@link ResourceRepository}.
  */
 @Repository
-public interface CompanyRepository extends ReplicatedRepository<Company> {
+public interface CompanyRepository extends ResourceRepository<Company> {
 }

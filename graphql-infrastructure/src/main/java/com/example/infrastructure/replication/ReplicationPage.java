@@ -1,6 +1,6 @@
 package com.example.infrastructure.replication;
 
-import com.example.infrastructure.persistence.ReplicatedEntity;
+import com.example.infrastructure.persistence.BaseEntity;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,7 +53,7 @@ public final class ReplicationPage<T> {
      * {@code updated} or {@code deleted} depending on their soft-delete flag, mapped
      * to views by {@code viewMapper}.
      */
-    public static <E extends ReplicatedEntity, V> ReplicationPage<V> partition(List<E> batch,
+    public static <E extends BaseEntity, V> ReplicationPage<V> partition(List<E> batch,
                                                                                Set<Long> matchingIds,
                                                                                long nextSequence,
                                                                                Function<E, V> viewMapper) {

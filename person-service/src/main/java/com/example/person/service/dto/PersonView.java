@@ -3,7 +3,7 @@ package com.example.person.service.dto;
 import com.example.infrastructure.graphql.model.GraphQLEnum;
 import com.example.infrastructure.graphql.model.GraphQLModel;
 import com.example.infrastructure.graphql.model.GraphQLTemporal;
-import com.example.infrastructure.replication.ReplicatedResourceView;
+import com.example.infrastructure.graphql.model.ResourceView;
 import com.example.person.domain.Gender;
 
 import java.math.BigDecimal;
@@ -15,8 +15,8 @@ import java.util.Set;
  * What the GraphQL layer exposes for a person: all stored fields plus the values the
  * service layer calculates (fullName, age, yearsOfService, monthlyNetSalary, bmi).
  * The technical fields (id, version, createdAt, updatedAt, sequence, deleted) are
- * inherited from {@link ReplicatedResourceView} - the schema mirrors this with
- * {@code Person implements ReplicatedResource}.
+ * inherited from {@link ResourceView} - the schema mirrors this with
+ * {@code Person implements Resource}.
  *
  * <p>Presentation annotations declare which fields are serialized as more than their
  * raw value: {@code @GraphQLTemporal} fields take a {@code format} argument
@@ -24,7 +24,7 @@ import java.util.Set;
  * into {@code EnumValue} objects. Unannotated fields return their plain value.
  */
 @GraphQLModel("Person")
-public class PersonView extends ReplicatedResourceView {
+public class PersonView extends ResourceView {
 
     private String firstName;
     private String lastName;

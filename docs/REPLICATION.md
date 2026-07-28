@@ -5,21 +5,22 @@ filtering, without the server keeping any per-client state.
 
 ## The model
 
-The technical fields live in one aligned hierarchy per representation, so every
-resource - current and future - exposes them identically:
+Every resource is a replicated resource, so the technical fields - id, `@Version`
+version, createdAt, updatedAt, sequence, deleted - live in a single base per
+representation and every resource, current and future, exposes them identically:
 
-| | base ("technical truth") | + replication |
-|---|---|---|
-| Entity | `BaseEntity` (id, createdAt, updatedAt, `@Version` version) | `ReplicatedEntity` (sequence, deleted) |
-| View DTO | `ResourceView` | `ReplicatedResourceView` |
-| GraphQL | `interface Resource` | `interface ReplicatedResource implements Resource` |
+| Representation | Single base ("technical truth") |
+|---|---|
+| Entity | `BaseEntity` |
+| View DTO | `ResourceView` |
+| GraphQL | `interface Resource` |
 
-`Person` and `Company` both declare `implements ReplicatedResource & Resource`, so
-clients can select the technical fields through interface fragments
-(`... on Resource { id version }`) on any resource type.
+`Person` and `Company` both declare `implements Resource`, so clients can select the
+technical fields through interface fragments (`... on Resource { id version sequence }`)
+on any resource type.
 
-Every replicated resource row (entity extending `ReplicatedEntity` in
-`graphql-infrastructure`) carries two extra columns:
+Every resource row (entity extending `BaseEntity` in `graphql-infrastructure`)
+carries two replication columns:
 
 - **`sequence`** — a per-table, monotonically increasing change number. The DAL stamps
   a fresh value from a native database sequence (`ReplicationSequences`) on **every**
@@ -103,12 +104,12 @@ one layer per class:
 
 | Layer | Infrastructure class | What a domain does |
 |---|---|---|
-| Entity | `ReplicatedEntity` (`sequence` + `deleted` columns) | `class Company extends ReplicatedEntity` |
-| View DTO | `ReplicatedResourceView` (technical fields incl. id/version/timestamps) | `class CompanyView extends ReplicatedResourceView` |
-| Schema | `interface Resource` / `interface ReplicatedResource` + `GraphQLModelTypeResolver` | `type Company implements ReplicatedResource & Resource` |
-| Repository | `ReplicatedRepository<E>` (feed queries, `maxSequence`) | `interface CompanyRepository extends ReplicatedRepository<Company> { }` |
-| DAL | `ReplicatedDal<E>` (capped filtered reads, feed reads, sequence stamping on save, soft-delete visibility) + `ReplicatedDalSupport` | subclass names the resource + DB sequence in a 2-line constructor |
-| Service | `ReplicatedResourceService<E, V>` (feed orchestration/partitioning, count, max sequence, `softDelete`) | subclass implements `toView(entity)` |
+| Entity | `BaseEntity` (technical fields incl. `sequence` + `deleted`) | `class Company extends BaseEntity` |
+| View DTO | `ResourceView` (technical fields incl. id/version/timestamps) | `class CompanyView extends ResourceView` |
+| Schema | `interface Resource` + `GraphQLModelTypeResolver` | `type Company implements Resource` |
+| Repository | `ResourceRepository<E>` (feed queries, `maxSequence`) | `interface CompanyRepository extends ResourceRepository<Company> { }` |
+| DAL | `ResourceDal<E>` (capped filtered reads, feed reads, sequence stamping on save, soft-delete visibility) + `ResourceDalSupport` | subclass names the resource + DB sequence in a 2-line constructor |
+| Service | `ResourceService<E, V>` (feed orchestration/partitioning, count, max sequence, `softDelete`) | subclass implements `toView(entity)` |
 | Resolvers | `ReplicationResolverFactory` (manufactures all four query resolvers) | one `@Bean` per schema field, one line each |
 | Protocol | `ReplicationSequences`, `ReplicationPage`, `LongScalar` + `scalar Long` | nothing — used internally |
 
@@ -117,19 +118,19 @@ The `person-service` and `company-service` modules are both wired exactly this w
 
 ## Adding a replicated domain (what `company-service` actually contains)
 
-1. Entity extends `ReplicatedEntity`; view extends `ReplicatedResourceView` (the
-   technical fields are inherited on both sides and mapped by name).
-2. `interface XRepository extends ReplicatedRepository<X> { }`
-3. `class XDal extends ReplicatedDal<X>` — constructor calls
+1. Entity extends `BaseEntity`; view extends `ResourceView` (the technical fields are
+   inherited on both sides and mapped by name).
+2. `interface XRepository extends ResourceRepository<X> { }`
+3. `class XDal extends ResourceDal<X>` — constructor calls
    `super("X", "x_replication_seq", repository, support)`.
-4. `class XService extends ReplicatedResourceService<X, XView>` — implements
+4. `class XService extends ResourceService<X, XView>` — implements
    `toView`; add domain-specific operations (e.g. creation) as needed.
 5. A `@Configuration` with one `@Bean GraphQLResolver` per standard query, built by
    `ReplicationResolverFactory` (`filteredList` / `bySequence` / `countByFilter` /
    `maxSequence`) + a `GraphQLModelSource` bean for the view class.
 6. `schema/<domain>.graphqls` declaring the fields (via `extend type Query` when
    another module already declares the base type), the resource type as
-   `type X implements ReplicatedResource & Resource` (repeating the interface fields,
-   as GraphQL requires), the `<X>ReplicationPage` type, and the `<X>Filter` input.
+   `type X implements Resource` (repeating the interface fields, as GraphQL
+   requires), the `<X>ReplicationPage` type, and the `<X>Filter` input.
 
 No resolver, DAL, or service logic is written for the four queries themselves.

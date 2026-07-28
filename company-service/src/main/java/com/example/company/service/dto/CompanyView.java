@@ -1,16 +1,16 @@
 package com.example.company.service.dto;
 
 import com.example.infrastructure.graphql.model.GraphQLModel;
-import com.example.infrastructure.replication.ReplicatedResourceView;
+import com.example.infrastructure.graphql.model.ResourceView;
 
 /**
  * What the GraphQL layer exposes for a company. The technical fields (id, version,
  * createdAt, updatedAt, sequence, deleted) are inherited from
- * {@link ReplicatedResourceView}; every field is carried by the declarative mapper -
+ * {@link ResourceView}; every field is carried by the declarative mapper -
  * the company domain has no hand-written mapping at all.
  */
 @GraphQLModel("Company")
-public class CompanyView extends ReplicatedResourceView {
+public class CompanyView extends ResourceView {
 
     private String name;
     private String industry;

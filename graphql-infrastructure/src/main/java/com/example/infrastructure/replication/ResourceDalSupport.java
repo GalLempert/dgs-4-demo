@@ -5,23 +5,23 @@ import com.example.infrastructure.filter.QueryResultCap;
 import org.springframework.stereotype.Component;
 
 /**
- * The infrastructure collaborators every {@link ReplicatedDal} needs, bundled into one
+ * The infrastructure collaborators every {@link ResourceDal} needs, bundled into one
  * injectable bean so a domain DAL's constructor stays a two-liner:
  *
  * <pre>{@code
- * public CompanyDal(CompanyRepository repository, ReplicatedDalSupport support) {
+ * public CompanyDal(CompanyRepository repository, ResourceDalSupport support) {
  *     super("Company", "company_replication_seq", repository, support);
  * }
  * }</pre>
  */
 @Component
-public class ReplicatedDalSupport {
+public class ResourceDalSupport {
 
     private final FilterSpecificationBuilder specificationBuilder;
     private final QueryResultCap queryResultCap;
     private final ReplicationSequences replicationSequences;
 
-    public ReplicatedDalSupport(FilterSpecificationBuilder specificationBuilder,
+    public ResourceDalSupport(FilterSpecificationBuilder specificationBuilder,
                                 QueryResultCap queryResultCap,
                                 ReplicationSequences replicationSequences) {
         this.specificationBuilder = specificationBuilder;

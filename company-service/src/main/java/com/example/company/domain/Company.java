@@ -1,6 +1,6 @@
 package com.example.company.domain;
 
-import com.example.infrastructure.persistence.ReplicatedEntity;
+import com.example.infrastructure.persistence.BaseEntity;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -8,12 +8,12 @@ import javax.persistence.Table;
 
 /**
  * Deliberately flat second demo aggregate: enough fields to filter on, nothing else.
- * Extending {@link ReplicatedEntity} is the only step needed for the company table to
+ * Extending {@link BaseEntity} is the only step needed for the company table to
  * be replicable through the {@code companiesBySequence} feed.
  */
 @Entity
 @Table(name = "company")
-public class Company extends ReplicatedEntity {
+public class Company extends BaseEntity {
 
     @Column(nullable = false, length = 128)
     private String name;

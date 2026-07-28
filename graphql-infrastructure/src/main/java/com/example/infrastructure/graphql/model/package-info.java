@@ -11,7 +11,8 @@
  *
  * <p>Also home of the technical-truth view base
  * {@link com.example.infrastructure.graphql.model.ResourceView} (id, version, audit
- * timestamps - the {@code Resource} schema interface's backing model) and the
+ * timestamps, sequence, deleted - the {@code Resource} schema interface's backing
+ * model) and the
  * {@link com.example.infrastructure.graphql.model.GraphQLModelTypeResolver}, which
  * resolves concrete types for interface-typed fields from the {@code @GraphQLModel}
  * annotation.

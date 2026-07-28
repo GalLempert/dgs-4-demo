@@ -2,7 +2,7 @@ package com.example.infrastructure.replication;
 
 import com.example.infrastructure.filter.FilterCriteria;
 import com.example.infrastructure.filter.QueryResultCap;
-import com.example.infrastructure.persistence.ReplicatedEntity;
+import com.example.infrastructure.persistence.BaseEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -21,8 +21,8 @@ import java.util.stream.Collectors;
  *
  * <pre>{@code
  * @Component
- * public class CompanyDal extends ReplicatedDal<Company> {
- *     public CompanyDal(CompanyRepository repository, ReplicatedDalSupport support) {
+ * public class CompanyDal extends ResourceDal<Company> {
+ *     public CompanyDal(CompanyRepository repository, ResourceDalSupport support) {
  *         super("Company", "company_replication_seq", repository, support);
  *     }
  * }
@@ -35,19 +35,19 @@ import java.util.stream.Collectors;
  * deleted rows. Filtered reads are guarded by the {@link QueryResultCap}: matching
  * rows are counted first and the query is rejected before fetching when over the cap.
  */
-public abstract class ReplicatedDal<E extends ReplicatedEntity> {
+public abstract class ResourceDal<E extends BaseEntity> {
 
-    private static final Logger log = LoggerFactory.getLogger(ReplicatedDal.class);
+    private static final Logger log = LoggerFactory.getLogger(ResourceDal.class);
 
     private final String resourceName;
     private final String sequenceName;
-    private final ReplicatedRepository<E> repository;
-    private final ReplicatedDalSupport support;
+    private final ResourceRepository<E> repository;
+    private final ResourceDalSupport support;
 
-    protected ReplicatedDal(String resourceName,
+    protected ResourceDal(String resourceName,
                             String sequenceName,
-                            ReplicatedRepository<E> repository,
-                            ReplicatedDalSupport support) {
+                            ResourceRepository<E> repository,
+                            ResourceDalSupport support) {
         this.resourceName = resourceName;
         this.sequenceName = sequenceName;
         this.repository = repository;
@@ -109,7 +109,7 @@ public abstract class ReplicatedDal<E extends ReplicatedEntity> {
                 .<E>where((root, query, cb) -> root.get("id").in(ids))
                 .and(support.specificationBuilder().toSpecification(criteria));
         return repository.findAll(specification).stream()
-                .map(ReplicatedEntity::getId)
+                .map(BaseEntity::getId)
                 .collect(Collectors.toSet());
     }
 

@@ -1,6 +1,6 @@
 package com.example.infrastructure.replication;
 
-import com.example.infrastructure.persistence.ReplicatedEntity;
+import com.example.infrastructure.persistence.BaseEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -15,11 +15,11 @@ import java.util.List;
  * against the concrete entity type ({@code #{#entityName}} expands to it):
  *
  * <pre>{@code
- * public interface CompanyRepository extends ReplicatedRepository<Company> { }
+ * public interface CompanyRepository extends ResourceRepository<Company> { }
  * }</pre>
  */
 @NoRepositoryBean
-public interface ReplicatedRepository<E extends ReplicatedEntity>
+public interface ResourceRepository<E extends BaseEntity>
         extends JpaRepository<E, Long>, JpaSpecificationExecutor<E> {
 
     /** The replication feed page: next rows strictly after the given sequence. */

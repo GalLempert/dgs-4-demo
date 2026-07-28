@@ -1,6 +1,6 @@
 package com.example.infrastructure.replication;
 
-import com.example.infrastructure.persistence.ReplicatedEntity;
+import com.example.infrastructure.persistence.BaseEntity;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ReplicationPageTest {
 
-    static class TestEntity extends ReplicatedEntity {
+    static class TestEntity extends BaseEntity {
         final String name;
 
         TestEntity(long id, String name, long sequence, boolean deleted) {

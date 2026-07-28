@@ -43,12 +43,12 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
 │       ├── filter             FilterParser, FilterSpecificationBuilder (dynamic WHERE),
 │       │                      FilterPredicateStrategy beans, QueryResultCap
 │       ├── validation         JsonSchemaValidationService + SchemaValidationException
-│       ├── persistence        BaseEntity (id + audit timestamps + @Version),
-│       │                      ReplicatedEntity (+ replication sequence, soft delete)
-│       ├── replication        the complete replicated-resource stack: ReplicatedRepository,
-│       │                      ReplicatedDal (+Support), ReplicatedResourceService,
-│       │                      ReplicatedResourceView, ReplicationResolverFactory,
-│       │                      ReplicationSequences, ReplicationPage
+│       ├── persistence        BaseEntity: id, audit timestamps, @Version, replication
+│       │                      sequence, soft delete (every resource is replicated)
+│       ├── replication        the complete resource stack: ResourceRepository,
+│       │                      ResourceDal (+Support), ResourceService,
+│       │                      ReplicationResolverFactory, ReplicationSequences,
+│       │                      ReplicationPage
 │       └── support            UniqueIndex (fail-fast strategy registries)
 ├── graphql-playground         <- domain-agnostic, reusable
 │   └── com.example.playground Self-hosted playground UI at /playground (no CDN)
@@ -67,9 +67,9 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
         │                      (the standard filtered/replication queries are factory-made)
         ├── graphql.mutation   CreatePersonResolver, UpdatePersonSalaryResolver, DeletePersonResolver
         ├── service            PersonService (business rules; standard behavior inherited
-        │                      from ReplicatedResourceService), PersonCalculations (pure math),
+        │                      from ResourceService), PersonCalculations (pure math),
         │                      PersonMapper (entity<->dto), dto (views / inputs)
-        ├── dal                PersonDal (extends ReplicatedDal) + PersonRepository
+        ├── dal                PersonDal (extends ResourceDal) + PersonRepository
         ├── domain             Person, Address (embedded), PhoneNumber (one-to-many), enums
         ├── config             PersonGraphQLConfig (model registration + 4 one-line query beans),
         │                      PersonEnumCatalog

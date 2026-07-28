@@ -106,14 +106,14 @@ The `company-service` module IS this recipe, executed — copy it. In short:
 2. `schema/company.graphqls` — types, queries, mutations, `CompanyFilter` composed
    from the shared filter inputs. Use `extend type Query` / `extend type Mutation`:
    the base types are declared once, by the hosting app's domain schema.
-3. Entity extending `ReplicatedEntity` (or `BaseEntity` if the domain should not be
-   replicable); repository extending `ReplicatedRepository<X>`; DAL extending
-   `ReplicatedDal<X>` (a 2-line constructor names the resource and its DB sequence).
-4. Service extending `ReplicatedResourceService<X, XView>` — implement `toView`;
-   views extend `ReplicatedResourceView` (technical fields inherited), are annotated
-   with `@GraphQLModel("Company")` and registered via one `GraphQLModelSource` bean;
+3. Entity extending `BaseEntity` (every resource is a replicated resource); repository
+   extending `ResourceRepository<X>`; DAL extending `ResourceDal<X>` (a 2-line
+   constructor names the resource and its DB sequence).
+4. Service extending `ResourceService<X, XView>` — implement `toView`; views extend
+   `ResourceView` (technical fields inherited), are annotated with
+   `@GraphQLModel("Company")` and registered via one `GraphQLModelSource` bean;
    `DeclarativeMapper` for the pass-through mapping. In the schema, declare
-   `type Company implements ReplicatedResource & Resource`.
+   `type Company implements Resource`.
 5. The four standard queries (filtered list, replication feed, count, max sequence)
    are one `@Bean` each via `ReplicationResolverFactory` — see `CompanyGraphQLConfig`.
    Hand-written `GraphQLResolver` beans only for domain-specific operations
