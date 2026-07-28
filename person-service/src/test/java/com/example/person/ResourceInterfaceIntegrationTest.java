@@ -59,9 +59,12 @@ class ResourceInterfaceIntegrationTest {
                 "{ personById(id: \"" + id + "\") { version } }", "data.personById.version");
         assertThat(initialVersion.longValue()).isEqualTo(0L);
 
-        dgsQueryExecutor.executeAndExtractJsonPath(
-                "mutation { updatePersonSalary(id: \"" + id + "\", salary: 100000) { id } }",
-                "data.updatePersonSalary.id");
+        // the mutation RESPONSE must already carry the bumped version: the DAL flushes
+        // on save so @Version/@PreUpdate values are current before view mapping
+        Number responseVersion = dgsQueryExecutor.executeAndExtractJsonPath(
+                "mutation { updatePersonSalary(id: \"" + id + "\", salary: 100000) { version } }",
+                "data.updatePersonSalary.version");
+        assertThat(responseVersion.longValue()).isEqualTo(1L);
 
         Number bumpedVersion = dgsQueryExecutor.executeAndExtractJsonPath(
                 "{ personById(id: \"" + id + "\") { version } }", "data.personById.version");

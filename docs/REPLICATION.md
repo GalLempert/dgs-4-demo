@@ -68,12 +68,33 @@ type PersonReplicationPage {
   (`RESULT_SET_TOO_LARGE`) — the page is the one query allowed to touch deleted rows,
   but it still never materializes more than the cap.
 
-`nextSequence` is the highest sequence in the page. When the page is empty — the
-client is caught up, or sent a sequence beyond the table's tail — it **snaps back to
-the table's actual maximum sequence** ("smart sequence"). An over-shot client thus
-resumes from a real position; since the feed is strictly-greater-than (`>`, never
-`>=`), polling with the maximum keeps returning empty pages until the next write, with
-no row ever delivered twice.
+`nextSequence` is the highest sequence in the page. On an empty page the cursor
+**never moves forward** — it only **snaps an over-shot cursor down to the table's
+actual maximum sequence** ("smart sequence"): a client that sent a sequence beyond the
+tail resumes from a real position, while a caught-up client keeps its own cursor.
+Advancing an empty page's cursor to a maximum read in a separate query could skip a
+row committed between the two reads — see "Correctness under concurrency" below.
+Since the feed is strictly-greater-than (`>`, never `>=`), polling with the maximum
+keeps returning empty pages until the next write, with no row ever delivered twice.
+
+## Correctness under concurrency
+
+Two guarantees make the feed lossless when writers and pollers overlap:
+
+- **Sequence order matches commit-visibility order.** A database sequence alone
+  guarantees unique allocation, not commit order: T1 could allocate 1, stall, and
+  commit after T2 already committed 2 — a poll would advance past 2 and never see 1.
+  To prevent this, `ReplicationSequences.next()` first takes a row lock on the
+  resource's entry in the `replication_write_lock` table (one row per resource,
+  created at startup). Row locks are held until the transaction ends, so writers of
+  the *same* resource serialize: nobody allocates the next sequence until the previous
+  writer committed or rolled back. Writes to different resources are unaffected; a
+  rolled-back write leaves a harmless gap.
+- **An empty page never advances the cursor.** The page query and the max-sequence
+  query are separate reads; a write committing between them could otherwise be
+  advertised as `nextSequence` without its row ever having been returned. The cursor
+  therefore only moves forward along rows the client actually received
+  (`min(requestedSequence, maxSequence)` on empty pages).
 
 ### `countPersonsByFilter`
 

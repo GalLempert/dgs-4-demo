@@ -33,11 +33,11 @@ type PersonReplicationPage {
     "Ids in the page that do NOT match the filter: drop any local copy"
     filteredOutIds: [ID!]!
     """
-    Resume point for the next poll: the highest sequence in the page. When the page is
-    empty (client caught up, or sent a sequence beyond the tail) this snaps back to the
-    table's actual maximum sequence, so an over-shot client keeps polling from a real
-    position - the feed is strictly-greater-than, so re-sending it yields an empty page
-    until the next write.
+    Resume point for the next poll: the highest sequence in the page. On an empty page
+    the cursor never moves forward - it only snaps an over-shot cursor down to the
+    table's actual maximum sequence, so an over-shot client resumes from a real
+    position and no concurrently committed row can ever be skipped. The feed is
+    strictly-greater-than, so re-sending it yields an empty page until the next write.
     """
     nextSequence: Long!
 }

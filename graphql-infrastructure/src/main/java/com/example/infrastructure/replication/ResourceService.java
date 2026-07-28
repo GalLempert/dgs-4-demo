@@ -64,10 +64,13 @@ public abstract class ResourceService<E extends BaseEntity, V> {
     public ReplicationPage<V> getBySequence(long sequence, int bulkSize, FilterCriteria criteria) {
         requirePositiveBulkSize(bulkSize);
         List<E> batch = replicatedDal.findBySequenceAfter(sequence, bulkSize);
-        // Smart resume point: highest sequence in the page; on an empty page (client
-        // caught up or over-shot) snap back to the table's actual maximum.
+        // Smart resume point: highest sequence in the page. On an empty page, snap an
+        // over-shot cursor DOWN to the table's maximum but never advance it - the max
+        // is read after the page query, so a concurrent commit in between could have a
+        // higher sequence whose row this page did not return; advancing to it would
+        // make the client's strictly-greater-than poll skip that row forever.
         long nextSequence = batch.isEmpty()
-                ? replicatedDal.maxSequence()
+                ? Math.min(sequence, replicatedDal.maxSequence())
                 : batch.get(batch.size() - 1).getSequence();
         ReplicationPage<V> page =
                 ReplicationPage.partition(batch, matchingIds(batch, criteria), nextSequence, this::toView);

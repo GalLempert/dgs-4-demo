@@ -52,6 +52,9 @@ public abstract class ResourceDal<E extends BaseEntity> {
         this.sequenceName = sequenceName;
         this.repository = repository;
         this.support = support;
+        // startup-time registration: creates the DB sequence + write-lock row here,
+        // outside any business transaction (DDL would implicitly commit one)
+        support.replicationSequences().register(sequenceName);
     }
 
     /** Live (not soft-deleted) row by id. */
@@ -113,11 +116,19 @@ public abstract class ResourceDal<E extends BaseEntity> {
                 .collect(Collectors.toSet());
     }
 
-    /** Persists the row, stamping a fresh replication sequence on it. */
+    /**
+     * Persists the row, stamping a fresh replication sequence on it. Allocating the
+     * sequence serializes against other writers of the same resource until the
+     * surrounding transaction commits (see {@link ReplicationSequences#next}), so
+     * sequence order always matches commit-visibility order and a feed poll can never
+     * skip a lower sequence that commits late. The save is flushed immediately so
+     * database-managed values ({@code @Version}, {@code @PreUpdate} timestamps) are
+     * current on the returned entity - mutation responses report the committed state.
+     */
     public E save(E entity) {
         entity.setSequence(support.replicationSequences().next(sequenceName));
         log.debug("DB[{}]: save(id={}, sequence={})", resourceName, entity.getId(), entity.getSequence());
-        return repository.save(entity);
+        return repository.saveAndFlush(entity);
     }
 
     /** The resource name used in error messages and logs, e.g. {@code "Person"}. */

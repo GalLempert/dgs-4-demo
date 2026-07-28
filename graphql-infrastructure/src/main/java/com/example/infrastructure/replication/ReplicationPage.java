@@ -27,11 +27,12 @@ import java.util.function.Function;
  * </ul>
  *
  * <p>{@link #getNextSequence() nextSequence} is the resume point for the next poll:
- * the highest sequence in the page, or - when the page is empty because the client's
- * sequence is at (or beyond) the table's tail - the table's actual maximum sequence.
- * That "smart" snap-back keeps an over-shot client polling from a real position;
- * because the feed uses strictly-greater-than, re-sending the maximum always yields an
- * empty page until the next write.
+ * the highest sequence in the page. On an empty page the cursor never moves forward -
+ * it only snaps an over-shot cursor DOWN to the table's actual maximum, so a client
+ * that over-shot resumes from a real position while a caught-up client keeps its own
+ * cursor (advancing it past sequences whose rows were not returned could skip a
+ * concurrently committed row forever). Because the feed uses strictly-greater-than,
+ * re-sending the maximum always yields an empty page until the next write.
  */
 public final class ReplicationPage<T> {
 
