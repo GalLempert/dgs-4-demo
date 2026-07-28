@@ -27,15 +27,20 @@ extend type Mutation {
     deleteCompany(id: ID!): Boolean!
 }
 
-type Company {
+"Implements the shared technical-truth interfaces: same id/version/timestamps/sequence/deleted shape as every other resource"
+type Company implements ReplicatedResource & Resource {
     id: ID!
+    "Optimistic-locking counter, incremented on every update"
+    version: Long!
     name: String!
     industry: String
     city: String
     employeeCount: Int
     foundedYear: Int
-    "Renders in the requested format (@GraphQLTemporal on CompanyView)"
+    "Renders in the requested format (@GraphQLTemporal, inherited from ResourceView)"
     createdAt(format: DateFormat = ISO): String
+    "Renders in the requested format (@GraphQLTemporal, inherited from ResourceView)"
+    updatedAt(format: DateFormat = ISO): String
     "Replication sequence, re-assigned on every write; drives the companiesBySequence feed"
     sequence: Long!
     "Soft-delete marker; deleted companies appear only in the replication feed"

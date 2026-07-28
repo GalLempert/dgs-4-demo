@@ -1,37 +1,22 @@
 package com.example.company.service.dto;
 
 import com.example.infrastructure.graphql.model.GraphQLModel;
-import com.example.infrastructure.graphql.model.GraphQLTemporal;
-
-import java.time.LocalDateTime;
+import com.example.infrastructure.replication.ReplicatedResourceView;
 
 /**
- * What the GraphQL layer exposes for a company. Every field is carried by the
- * declarative mapper - the company domain has no hand-written mapping at all.
+ * What the GraphQL layer exposes for a company. The technical fields (id, version,
+ * createdAt, updatedAt, sequence, deleted) are inherited from
+ * {@link ReplicatedResourceView}; every field is carried by the declarative mapper -
+ * the company domain has no hand-written mapping at all.
  */
 @GraphQLModel("Company")
-public class CompanyView {
+public class CompanyView extends ReplicatedResourceView {
 
-    private Long id;
     private String name;
     private String industry;
     private String city;
     private Integer employeeCount;
     private Integer foundedYear;
-
-    @GraphQLTemporal
-    private LocalDateTime createdAt;
-
-    private Long sequence;
-    private boolean deleted;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public String getName() {
         return name;
@@ -71,29 +56,5 @@ public class CompanyView {
 
     public void setFoundedYear(Integer foundedYear) {
         this.foundedYear = foundedYear;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Long getSequence() {
-        return sequence;
-    }
-
-    public void setSequence(Long sequence) {
-        this.sequence = sequence;
-    }
-
-    public boolean isDeleted() {
-        return deleted;
-    }
-
-    public void setDeleted(boolean deleted) {
-        this.deleted = deleted;
     }
 }

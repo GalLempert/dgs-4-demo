@@ -7,11 +7,14 @@ import javax.persistence.Id;
 import javax.persistence.MappedSuperclass;
 import javax.persistence.PrePersist;
 import javax.persistence.PreUpdate;
+import javax.persistence.Version;
 import java.time.LocalDateTime;
 
 /**
- * Common JPA base class: surrogate id + audit timestamps. Domain entities in any module
- * can extend this instead of re-declaring the same boilerplate.
+ * Common JPA base class carrying the technical truth every resource has: surrogate id,
+ * audit timestamps and an optimistic-locking version. Domain entities in any module
+ * extend this instead of re-declaring the same boilerplate; the GraphQL side mirrors
+ * it with the {@code Resource} schema interface and the {@code ResourceView} DTO base.
  */
 @MappedSuperclass
 public abstract class BaseEntity {
@@ -25,6 +28,11 @@ public abstract class BaseEntity {
 
     @Column(nullable = false)
     private LocalDateTime updatedAt;
+
+    /** Optimistic-locking counter, incremented by JPA on every update. */
+    @Version
+    @Column(nullable = false)
+    private long version;
 
     @PrePersist
     void onCreate() {
@@ -47,5 +55,9 @@ public abstract class BaseEntity {
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public long getVersion() {
+        return version;
     }
 }

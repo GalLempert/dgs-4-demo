@@ -48,8 +48,11 @@ type Mutation {
     deletePerson(id: ID!): Boolean!
 }
 
-type Person {
+"Implements the shared technical-truth interfaces: same id/version/timestamps/sequence/deleted shape as every other resource"
+type Person implements ReplicatedResource & Resource {
     id: ID!
+    "Optimistic-locking counter, incremented on every update"
+    version: Long!
     firstName: String!
     lastName: String!
     "Calculated by the service layer"
@@ -78,8 +81,10 @@ type Person {
     address: Address
     phoneNumbers: [PhoneNumber!]!
     hobbies: [String!]!
-    "Renders in the requested format (@GraphQLTemporal on PersonView)"
+    "Renders in the requested format (@GraphQLTemporal, inherited from ResourceView)"
     createdAt(format: DateFormat = ISO): String
+    "Renders in the requested format (@GraphQLTemporal, inherited from ResourceView)"
+    updatedAt(format: DateFormat = ISO): String
     "Replication sequence, re-assigned on every write; drives the personsBySequence feed"
     sequence: Long!
     "Soft-delete marker; deleted persons appear only in the replication feed"

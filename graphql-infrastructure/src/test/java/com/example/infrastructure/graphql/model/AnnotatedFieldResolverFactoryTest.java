@@ -41,6 +41,25 @@ class AnnotatedFieldResolverFactoryTest {
     static class NotAnnotatedModel {
     }
 
+    /** Technical base like ResourceView: annotated fields live on the superclass. */
+    abstract static class TechnicalBaseModel {
+        @GraphQLTemporal
+        private LocalDate stamped;
+
+        TechnicalBaseModel(LocalDate stamped) {
+            this.stamped = stamped;
+        }
+    }
+
+    @GraphQLModel("Derived")
+    static class DerivedModel extends TechnicalBaseModel {
+        private String own;
+
+        DerivedModel(LocalDate stamped) {
+            super(stamped);
+        }
+    }
+
     @GraphQLModel("Broken")
     static class TemporalOnStringModel {
         @GraphQLTemporal
@@ -83,6 +102,18 @@ class AnnotatedFieldResolverFactoryTest {
         assertThat(resolvers).allMatch(resolver -> resolver.parentType().equals("Sample"));
         assertThat(resolvers.stream().map(GraphQLFieldResolver::fieldName).collect(Collectors.toList()))
                 .containsExactlyInAnyOrder("color", "when");
+    }
+
+    @Test
+    void annotatedFieldsInheritedFromABaseClassResolveForTheSubclassType() throws Exception {
+        List<GraphQLFieldResolver> resolvers = factoryFor(DerivedModel.class).createResolvers();
+
+        assertThat(resolvers).hasSize(1);
+        GraphQLFieldResolver resolver = resolvers.get(0);
+        assertThat(resolver.parentType()).isEqualTo("Derived");
+        assertThat(resolver.fieldName()).isEqualTo("stamped");
+        assertThat(resolver.resolve(envWithSource(new DerivedModel(LocalDate.of(1985, 12, 10)))))
+                .isEqualTo("1985-12-10");
     }
 
     @Test

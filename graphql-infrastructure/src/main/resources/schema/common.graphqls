@@ -22,6 +22,39 @@ type EnumValue {
 }
 
 # ---------------------------------------------------------------------------
+# The technical-truth hierarchy: every resource type implements these
+# interfaces, mirroring the entity side (BaseEntity -> ReplicatedEntity) and
+# the view side (ResourceView -> ReplicatedResourceView). Clients can rely on
+# the same technical fields, with the same shapes, on every resource.
+# ---------------------------------------------------------------------------
+
+"Technical fields every resource exposes"
+interface Resource {
+    id: ID!
+    "Optimistic-locking counter, incremented on every update"
+    version: Long!
+    "Renders in the requested format"
+    createdAt(format: DateFormat = ISO): String
+    "Renders in the requested format"
+    updatedAt(format: DateFormat = ISO): String
+}
+
+"A resource replicable through its sequence-based feed (<resources>BySequence)"
+interface ReplicatedResource implements Resource {
+    id: ID!
+    "Optimistic-locking counter, incremented on every update"
+    version: Long!
+    "Renders in the requested format"
+    createdAt(format: DateFormat = ISO): String
+    "Renders in the requested format"
+    updatedAt(format: DateFormat = ISO): String
+    "Replication sequence, re-assigned on every write; drives the resource's feed"
+    sequence: Long!
+    "Soft-delete marker; deleted resources appear only in the replication feed"
+    deleted: Boolean!
+}
+
+# ---------------------------------------------------------------------------
 # Filtering: one filter input per raw type, offering only the predicates that
 # make sense for it (every type has equals; only String has like; ranges exist
 # for numbers and dates). Predicate names map 1:1 to FilterPredicateStrategy

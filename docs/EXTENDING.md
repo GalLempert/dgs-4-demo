@@ -110,8 +110,10 @@ The `company-service` module IS this recipe, executed — copy it. In short:
    replicable); repository extending `ReplicatedRepository<X>`; DAL extending
    `ReplicatedDal<X>` (a 2-line constructor names the resource and its DB sequence).
 4. Service extending `ReplicatedResourceService<X, XView>` — implement `toView`;
-   views annotated with `@GraphQLModel("Company")` and registered via one
-   `GraphQLModelSource` bean; `DeclarativeMapper` for the pass-through mapping.
+   views extend `ReplicatedResourceView` (technical fields inherited), are annotated
+   with `@GraphQLModel("Company")` and registered via one `GraphQLModelSource` bean;
+   `DeclarativeMapper` for the pass-through mapping. In the schema, declare
+   `type Company implements ReplicatedResource & Resource`.
 5. The four standard queries (filtered list, replication feed, count, max sequence)
    are one `@Bean` each via `ReplicationResolverFactory` — see `CompanyGraphQLConfig`.
    Hand-written `GraphQLResolver` beans only for domain-specific operations

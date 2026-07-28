@@ -54,8 +54,12 @@ public class AnnotatedFieldResolverFactory {
                     + " is registered as a GraphQL model but is not annotated with @GraphQLModel");
         }
         List<GraphQLFieldResolver> resolvers = new ArrayList<>();
-        for (Field field : modelClass.getDeclaredFields()) {
-            createResolverFor(model.value(), field).ifPresent(resolvers::add);
+        // walk the whole hierarchy: technical fields (createdAt, updatedAt, ...) live
+        // on shared view base classes and their annotations must apply to the subclass
+        for (Class<?> level = modelClass; level != null && level != Object.class; level = level.getSuperclass()) {
+            for (Field field : level.getDeclaredFields()) {
+                createResolverFor(model.value(), field).ifPresent(resolvers::add);
+            }
         }
         return resolvers;
     }

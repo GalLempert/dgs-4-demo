@@ -29,7 +29,9 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
 │       │                      GraphQLResolverRegistry, GraphQLOperationType
 │       ├── graphql.arguments  GraphQLArgumentMapper (typed access to raw arguments)
 │       ├── graphql.model      @GraphQLModel/@GraphQLEnum/@GraphQLTemporal annotations
-│       │                      + AnnotatedFieldResolverFactory (field presentation)
+│       │                      + AnnotatedFieldResolverFactory (field presentation),
+│       │                      ResourceView (shared technical-field view base) +
+│       │                      GraphQLModelTypeResolver (Resource interface resolution)
 │       ├── graphql.format     TemporalFormatter strategies (ISO/UNIX/RFC_1123)
 │       ├── graphql.error      GraphQLExceptionHandler (global error boundary)
 │       ├── graphql.scalars    TemporalScalar template + Date / DateTime scalars
@@ -41,11 +43,12 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
 │       ├── filter             FilterParser, FilterSpecificationBuilder (dynamic WHERE),
 │       │                      FilterPredicateStrategy beans, QueryResultCap
 │       ├── validation         JsonSchemaValidationService + SchemaValidationException
-│       ├── persistence        BaseEntity (id + audit timestamps),
+│       ├── persistence        BaseEntity (id + audit timestamps + @Version),
 │       │                      ReplicatedEntity (+ replication sequence, soft delete)
 │       ├── replication        the complete replicated-resource stack: ReplicatedRepository,
 │       │                      ReplicatedDal (+Support), ReplicatedResourceService,
-│       │                      ReplicationResolverFactory, ReplicationSequences, ReplicationPage
+│       │                      ReplicatedResourceView, ReplicationResolverFactory,
+│       │                      ReplicationSequences, ReplicationPage
 │       └── support            UniqueIndex (fail-fast strategy registries)
 ├── graphql-playground         <- domain-agnostic, reusable
 │   └── com.example.playground Self-hosted playground UI at /playground (no CDN)

@@ -23,6 +23,10 @@
  *   <li>{@link com.example.infrastructure.replication.ReplicatedResourceService} -
  *       complete service layer (feed orchestration and partitioning, counting, soft
  *       delete); subclass supplies the entity-to-view mapping.</li>
+ *   <li>{@link com.example.infrastructure.replication.ReplicatedResourceView} - view
+ *       DTO base with the technical fields (extends the plain
+ *       {@code ResourceView} with sequence + deleted); backs the
+ *       {@code ReplicatedResource} schema interface.</li>
  *   <li>{@link com.example.infrastructure.replication.ReplicationResolverFactory} -
  *       manufactures the four query resolvers; the domain registers one
  *       {@code @Bean} per schema field.</li>
