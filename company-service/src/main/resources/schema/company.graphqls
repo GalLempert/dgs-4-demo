@@ -22,6 +22,7 @@ type Query {
 }
 
 type Mutation {
+    "The name is the company's natural key and must be unique (DUPLICATE_RESOURCE otherwise)"
     createCompany(input: CreateCompanyInput!): Company!
     "Soft delete: the company disappears from regular queries and travels through the feed"
     deleteCompany(id: ID!): Boolean!
@@ -32,6 +33,8 @@ type Mutation {
     """
     Updates every company matching the filter: the input's non-null fields replace the
     matching companies' values, everything else stays. An empty filter is rejected.
+    Bounded by the query result cap: more matches than the cap fail with
+    RESULT_SET_TOO_LARGE before any row changes.
     """
     updateCompanies(filter: CompanyFilter!, input: UpdateCompanyInput!): [Company!]!
 
@@ -50,7 +53,8 @@ type Mutation {
 
     """
     Soft-deletes every company matching the filter and returns how many were deleted.
-    An empty filter is rejected.
+    An empty filter is rejected; like updateCompanies, the write is bounded by the
+    query result cap.
     """
     deleteCompanies(filter: CompanyFilter!): Int!
 }

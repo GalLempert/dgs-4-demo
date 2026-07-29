@@ -26,7 +26,9 @@ import java.util.Set;
 @Table(name = "company")
 public class Company extends BaseEntity {
 
-    @Column(nullable = false, length = 128)
+    // unique: the name is the company's natural key (saveOrOverride resolves on it),
+    // so the database backs the service-layer uniqueness validation
+    @Column(nullable = false, unique = true, length = 128)
     private String name;
 
     @Column(length = 64)

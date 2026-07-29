@@ -138,6 +138,13 @@ public abstract class ResourceService<E extends BaseEntity, V> {
      * the write pipeline per row and saves the whole list in one bulk write. The
      * filter must be non-empty - an unfiltered update of the entire table is almost
      * certainly a client mistake and is rejected.
+     *
+     * <p>Bulk writes are bounded by the same query result cap as filtered reads, by
+     * deliberate choice: a filter matching more than {@code graphql.query.max-results}
+     * rows fails with {@code RESULT_SET_TOO_LARGE} BEFORE any row is touched (the DAL
+     * counts first), so a bulk mutation is always a bounded, all-or-nothing batch.
+     * Callers narrow the filter (or raise the cap) rather than the service silently
+     * materializing an unbounded entity set inside one transaction.
      */
     @Transactional
     public List<V> update(FilterCriteria criteria, Object input) {
@@ -198,7 +205,8 @@ public abstract class ResourceService<E extends BaseEntity, V> {
      * Delete-by-filter: soft-deletes every live row matching the criteria in one bulk
      * write (each flipped row gets a fresh sequence, so the deletions travel through
      * the replication feed) and reports how many rows were affected. Like
-     * {@link #update}, an empty filter is rejected.
+     * {@link #update}, an empty filter is rejected and the write is bounded by the
+     * query result cap (fails before any change when the filter matches more rows).
      */
     @Transactional
     public int deleteByFilter(FilterCriteria criteria) {

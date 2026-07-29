@@ -25,6 +25,13 @@ Guardrails:
 - `update`, `saveOrUpdate` and the filtered `delete` **reject an empty filter**
   (`INVALID_ARGUMENT` 400) — an unfiltered write to the whole table is almost
   certainly a client mistake.
+- Bulk writes are **bounded by the query result cap** (`graphql.query.max-results`,
+  default 100) — the same guardrail as filtered reads, applied deliberately to the
+  write side: a filter matching more rows fails with `RESULT_SET_TOO_LARGE` (422)
+  **before any row is touched** (the DAL counts first), so a bulk mutation is always
+  a bounded, all-or-nothing batch. Narrow the filter or raise the cap for larger
+  writes; the framework never silently materializes an unbounded entity set inside
+  one transaction.
 - `saveOrOverride` fails loudly (`INTERNAL_ERROR`) when the natural key matches more
   than one row — the domain's `naturalKeyOf` must identify at most one.
 - The id-based soft delete (`deleteById` factory method / `softDelete` service

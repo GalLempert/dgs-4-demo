@@ -113,6 +113,19 @@ class CompanyMutationIntegrationTest {
     }
 
     @Test
+    void duplicateCompanyNameIsRejectedBecauseTheNameIsTheNaturalKey() {
+        createCompany("UniqueCo", "UniqIndustry", null);
+
+        ExecutionResult result = dgsQueryExecutor.execute(
+                "mutation { createCompany(input: { name: \"UniqueCo\" }) { id } }");
+
+        assertThat(result.getErrors()).hasSize(1);
+        assertThat(result.getErrors().get(0).getMessage()).contains("already exists");
+        assertThat(result.getErrors().get(0).getExtensions().get("literal")).isEqualTo("DUPLICATE_RESOURCE");
+        assertThat(result.getErrors().get(0).getExtensions().get("httpStatus")).isEqualTo(409);
+    }
+
+    @Test
     void filteredMutationRejectsAnEmptyFilterLikeTheQueriesRejectNothing() {
         ExecutionResult result = dgsQueryExecutor.execute(
                 "mutation { deleteCompanies(filter: { }) }");
