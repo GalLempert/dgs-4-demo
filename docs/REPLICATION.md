@@ -1,7 +1,9 @@
 # Replication feed — sequence-based polling
 
 How clients import the whole person table and stay in sync by polling, with optional
-filtering, without the server keeping any per-client state.
+filtering, without the server keeping any per-client state. For a screenshot-guided
+tour of a full polling session against a running instance, see
+[API-WALKTHROUGH.md](API-WALKTHROUGH.md).
 
 ## The model
 

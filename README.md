@@ -11,6 +11,7 @@ A demo GraphQL service built with **Netflix DGS 4.9.x** / **graphql-java 17** on
 | [docs/EXTENDING.md](docs/EXTENDING.md) | Cookbook: add a field / constraint / calculated value / custom presentation / query / filter predicate / error code / whole domain |
 | [docs/FILTERING.md](docs/FILTERING.md) | Conceptual guide to filtering: predicate shapes, AND behavior, variables, result caps, and illustrative examples |
 | [docs/REPLICATION.md](docs/REPLICATION.md) | The sequence-based replication feed: `personsBySequence` paging, soft deletes, filtered replication with `filteredOutIds`, smart next-sequence |
+| [docs/API-WALKTHROUGH.md](docs/API-WALKTHROUGH.md) | Screenshot-guided tour of the four standard queries in the playground, including a complete replication polling session (import → resume → caught up) |
 | [docs/FILTER-COMPOSITION.md](docs/FILTER-COMPOSITION.md) | Agreed design for explicit `and`/`or`/`not` filter composition (not yet implemented) |
 | [docs/DAL-ALTERNATIVES.md](docs/DAL-ALTERNATIVES.md) | Data-access alternatives compared — including staying on Hibernate 6+ — with a revised recommendation |
 | [docs/UPGRADE-PERFORMANCE.md](docs/UPGRADE-PERFORMANCE.md) | Expected performance impact of Java / Spring Boot / DGS upgrade milestones |
