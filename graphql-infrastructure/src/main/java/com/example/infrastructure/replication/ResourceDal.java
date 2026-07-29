@@ -132,6 +132,20 @@ public abstract class ResourceDal<E extends BaseEntity> {
         return repository.saveAndFlush(entity);
     }
 
+    /**
+     * Bulk variant of {@link #save}: stamps a fresh replication sequence on every row
+     * (each row gets its own value - replication clients see every change), saves the
+     * whole list and flushes once so the returned entities carry the committed
+     * database-managed values.
+     */
+    public List<E> saveAll(List<E> entities) {
+        entities.forEach(entity -> entity.setSequence(support.replicationSequences().next(sequenceName)));
+        log.debug("DB[{}]: saveAll({} rows)", resourceName, entities.size());
+        List<E> saved = repository.saveAll(entities);
+        repository.flush();
+        return saved;
+    }
+
     /** The resource name used in error messages and logs, e.g. {@code "Person"}. */
     public String resourceName() {
         return resourceName;

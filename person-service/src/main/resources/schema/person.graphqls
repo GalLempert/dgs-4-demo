@@ -46,6 +46,57 @@ type Mutation {
     createPerson(input: CreatePersonInput!): Person!
     updatePersonSalary(id: ID!, salary: Float!): Person!
     deletePerson(id: ID!): Boolean!
+
+    # ---- standard framework mutations (manufactured by MutationResolverFactory);
+    # ---- filtered mutations take the SAME PersonFilter as the queries
+
+    """
+    Updates every person matching the filter: the input's non-null fields replace the
+    matching persons' values, everything else stays. The filter must contain at least
+    one predicate - an empty filter (update the whole table) is rejected.
+    """
+    updatePersons(filter: PersonFilter!, input: UpdatePersonInput!): [Person!]!
+
+    """
+    Upsert: when no person matches the filter, creates one from input; otherwise
+    updates every match with updateInput (or with input when updateInput is omitted).
+    Pure orchestration of createPerson-style save and updatePersons-style update.
+    """
+    saveOrUpdatePerson(filter: PersonFilter!, input: CreatePersonInput!, updateInput: UpdatePersonInput): [Person!]!
+
+    """
+    Create-or-replace by natural key (email): unknown email creates the person; a
+    known email replaces the existing person's whole business state with the input -
+    omitted optional fields become empty, unlike the merge semantics of updatePersons.
+    Technical fields (id, version, timestamps, sequence) are preserved.
+    """
+    saveOrOverridePerson(input: CreatePersonInput!): Person!
+
+    """
+    Soft-deletes every person matching the filter and returns how many were deleted.
+    The deletions travel through the replication feed. An empty filter is rejected.
+    """
+    deletePersons(filter: PersonFilter!): Int!
+}
+
+"Partial-update payload of updatePersons/saveOrUpdatePerson: every field optional; only non-null fields are applied"
+input UpdatePersonInput {
+    firstName: String
+    lastName: String
+    email: String
+    nickname: String
+    birthDate: Date
+    gender: Gender
+    salary: Float
+    active: Boolean
+    hireDate: Date
+    heightCm: Int
+    weightKg: Float
+    address: AddressInput
+    "Replaces the person's phone number list as a whole when provided"
+    phoneNumbers: [PhoneNumberInput!]
+    "Replaces the person's hobby list as a whole when provided"
+    hobbies: [String!]
 }
 
 "Implements the shared technical-truth interface: same id/version/timestamps/sequence/deleted shape as every other resource"

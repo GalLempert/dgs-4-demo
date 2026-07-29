@@ -55,6 +55,24 @@ draft-07 supports: ranges, patterns, lengths, array sizes, formats. Violations r
 4. For validated inputs, override `argumentJsonSchemas()` → `{argName: schemaName}`.
 5. Call the service; return views. Add an integration test with `DgsQueryExecutor`.
 
+## Add the standard mutations to a resource — zero resolver code
+
+The five standard write operations (save-new, update-by-filter, save-or-update,
+save-or-override, delete-by-filter) are inherited from `ResourceService` and
+manufactured by `MutationResolverFactory` — declare the schema fields and register
+one bean per field, exactly like the standard queries:
+
+```java
+@Bean
+public GraphQLResolver updateWidgets(MutationResolverFactory factory, WidgetService service) {
+    return factory.updateByFilter("updateWidgets", service, CreateWidgetInput.class)
+            .validating("input", "widget-update");   // optional JSON-schema opt-in
+}
+```
+
+Override `naturalKeyOf(input)` on the service when wiring save-or-override, and
+`validate` / `calculateDerivedFields` for domain rules. See `docs/MUTATIONS.md`.
+
 ## Make a field filterable
 
 Add it to the resource's filter input in the domain schema, choosing the filter type

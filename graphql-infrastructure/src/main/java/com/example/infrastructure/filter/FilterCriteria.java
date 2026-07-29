@@ -53,6 +53,17 @@ public final class FilterCriteria {
         return new FilterCriteria(filters, Combinator.AND);
     }
 
+    /**
+     * Programmatic single-field equality criteria - the same shape the GraphQL filter
+     * {@code { <field>: { equals: { value: <value> } } }} parses into. Services use it
+     * for internal lookups (e.g. a resource's natural key) so those queries run through
+     * the exact same filter machinery as client-supplied filters.
+     */
+    public static FilterCriteria whereEquals(String fieldPath, Object value) {
+        return and(Collections.singletonList(
+                new FieldFilter(fieldPath, "equals", Collections.singletonMap("value", value))));
+    }
+
     public static FilterCriteria of(List<FieldFilter> filters, Combinator combinator) {
         return new FilterCriteria(filters, combinator);
     }

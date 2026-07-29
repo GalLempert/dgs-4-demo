@@ -8,8 +8,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 /**
- * Seeds a few demo companies at startup (through the service layer, so the same code
- * path as the createCompany mutation is exercised).
+ * Seeds a few demo companies at startup (through the inherited saveNew, so the same
+ * code path as the createCompany mutation is exercised).
  */
 @Component
 public class CompanyDataLoader implements CommandLineRunner {
@@ -26,9 +26,9 @@ public class CompanyDataLoader implements CommandLineRunner {
     public void run(String... args) {
         // employee ids are cross-service references to persons owned by person-service
         // (seeded there as ids 1-3); stored as bare keys, never validated here
-        companyService.createCompany(company("Initech", "Software", "Tel Aviv", 320, 1997, 1L, 2L));
-        companyService.createCompany(company("Globex", "Manufacturing", "Haifa", 1200, 1989, 3L));
-        companyService.createCompany(company("Hooli", "Software", "Jerusalem", 5400, 2012));
+        companyService.saveNew(company("Initech", "Software", "Tel Aviv", 320, 1997, 1L, 2L));
+        companyService.saveNew(company("Globex", "Manufacturing", "Haifa", 1200, 1989, 3L));
+        companyService.saveNew(company("Hooli", "Software", "Jerusalem", 5400, 2012));
         log.info("Seeded 3 demo companies");
     }
 
