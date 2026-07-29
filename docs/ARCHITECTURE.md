@@ -12,14 +12,19 @@ field / predicate / domain?") see [EXTENDING.md](EXTENDING.md).
 ```
 dgs-demo (parent POM: dependency management, version-conflict resolution)
 │
-├── graphql-infrastructure      domain-agnostic library. Knows NOTHING about Person.
+├── graphql-infrastructure      domain-agnostic framework. Knows NOTHING about Person.
 ├── graphql-playground          domain-agnostic self-hosted playground UI (/playground)
-├── company-service             second, minimal domain: proves the reuse (its standard
-│                               queries are entirely inherited from the infrastructure)
-├── person-service              the concrete Person domain + the runnable Spring Boot
-│                               app (composes company-service in)
+├── company-service             second, minimal STANDALONE service (:8081): proves the
+│                               reuse (its standard queries are entirely inherited) and
+│                               demonstrates cross-service references (docs/FEDERATION.md)
+├── person-service              the Person service, runnable Spring Boot app (:8080);
+│                               fully independent of company-service at runtime
 └── perf-tests                  k6 black-box load scenarios (not a Maven module)
 ```
+
+Each domain is its own GraphQL service: same framework ("how"), unique schema and
+API ("what"). Services never share a runtime or database; cross-service links are
+id-only reference stubs (see [FEDERATION.md](FEDERATION.md)).
 
 The rule that keeps the split honest: **`graphql-infrastructure` must compile and make
 sense with zero knowledge of any domain.** It ships contracts (`GraphQLResolver`,

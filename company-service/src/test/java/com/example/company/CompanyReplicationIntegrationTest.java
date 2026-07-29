@@ -1,4 +1,4 @@
-package com.example.person;
+package com.example.company;
 
 import com.netflix.graphql.dgs.DgsQueryExecutor;
 import graphql.ExecutionResult;
@@ -12,14 +12,14 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The second domain (company-service) running the SAME infrastructure stack as the
- * person domain: the four standard queries exist and behave identically even though
- * the company module wrote no resolver, DAL or service logic for them - only bean
- * wiring and schema. Seeded: Initech (Software), Globex (Manufacturing), Hooli
- * (Software).
+ * The company service running the SAME infrastructure stack as the person service,
+ * as its own standalone application: the four standard queries exist and behave
+ * identically even though this module wrote no resolver, DAL or service logic for
+ * them - only bean wiring and schema. Seeded: Initech (Software, employees 1+2),
+ * Globex (Manufacturing, employee 3), Hooli (Software, no employees).
  *
- * <p>Same shared-context discipline as ReplicationIntegrationTest: every test
- * baselines on the current companyMaxSequence and creates its own companies.
+ * <p>Same shared-context discipline as the person suite: every test baselines on the
+ * current companyMaxSequence and creates its own companies.
  */
 @SpringBootTest
 class CompanyReplicationIntegrationTest {
@@ -69,6 +69,46 @@ class CompanyReplicationIntegrationTest {
     }
 
     @Test
+    void employeesAreExposedAsIdOnlyPersonStubs() {
+        // cross-service reference: only the key travels; person-service owns the data
+        List<String> employeeIds = dgsQueryExecutor.executeAndExtractJsonPath(
+                "{ companies(filter: { name: { equals: { value: \"Initech\" } } }) "
+                        + "{ employees { id } } }",
+                "data.companies[0].employees[*].id");
+        assertThat(employeeIds).containsExactly("1", "2");
+
+        List<Object> none = dgsQueryExecutor.executeAndExtractJsonPath(
+                "{ companies(filter: { name: { equals: { value: \"Hooli\" } } }) "
+                        + "{ employees { id } } }",
+                "data.companies[0].employees[*].id");
+        assertThat(none).isEmpty();
+    }
+
+    @Test
+    void employeeReferencesFlowThroughTheCreateMutation() {
+        List<String> ids = dgsQueryExecutor.executeAndExtractJsonPath(
+                "mutation { createCompany(input: { name: \"RefCorp\", employeeIds: [\"7\", \"8\"] }) "
+                        + "{ employees { id } } }",
+                "data.createCompany.employees[*].id");
+        assertThat(ids).containsExactly("7", "8");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void technicalFieldsAreSelectableThroughTheSharedInterface() {
+        ExecutionResult result = dgsQueryExecutor.execute(
+                "{ companies(filter: { name: { equals: { value: \"Initech\" } } }) { "
+                        + "... on Resource { id version createdAt updatedAt sequence deleted } } }");
+
+        assertThat(result.getErrors()).isEmpty();
+        Map<String, Object> data = (Map<String, Object>) result.toSpecification().get("data");
+        Map<String, Object> initech = ((List<Map<String, Object>>) data.get("companies")).get(0);
+        assertThat(initech.get("id")).isNotNull();
+        assertThat(((Number) initech.get("sequence")).longValue()).isPositive();
+        assertThat(initech.get("deleted")).isEqualTo(false);
+    }
+
+    @Test
     void companyFeedPagesAndResumesLikeThePersonFeed() {
         long baseline = maxSequence();
         createCompany("FeedCorp A", "Testing");
@@ -93,6 +133,7 @@ class CompanyReplicationIntegrationTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void companyFilterPartitionsThePageAndReportsFilteredOutIds() {
         long baseline = maxSequence();
         createCompany("MatchCorp", "FilteredIndustry");
@@ -126,19 +167,5 @@ class CompanyReplicationIntegrationTest {
                 "data.countCompaniesByFilter");
         assertThat(live).isEqualTo(0);
         assertThat(all).isEqualTo(1);
-    }
-
-    @Test
-    void bothFeedsRunIndependentSequences() {
-        long personMax = ((Number) dgsQueryExecutor.executeAndExtractJsonPath(
-                "{ personMaxSequence }", "data.personMaxSequence")).longValue();
-        long companyBaseline = maxSequence();
-
-        createCompany("NoCrossTalk Inc", "Testing");
-
-        long personMaxAfter = ((Number) dgsQueryExecutor.executeAndExtractJsonPath(
-                "{ personMaxSequence }", "data.personMaxSequence")).longValue();
-        assertThat(personMaxAfter).isEqualTo(personMax);
-        assertThat(maxSequence()).isGreaterThan(companyBaseline);
     }
 }

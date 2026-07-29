@@ -24,20 +24,23 @@ public class CompanyDataLoader implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        companyService.createCompany(company("Initech", "Software", "Tel Aviv", 320, 1997));
-        companyService.createCompany(company("Globex", "Manufacturing", "Haifa", 1200, 1989));
+        // employee ids are cross-service references to persons owned by person-service
+        // (seeded there as ids 1-3); stored as bare keys, never validated here
+        companyService.createCompany(company("Initech", "Software", "Tel Aviv", 320, 1997, 1L, 2L));
+        companyService.createCompany(company("Globex", "Manufacturing", "Haifa", 1200, 1989, 3L));
         companyService.createCompany(company("Hooli", "Software", "Jerusalem", 5400, 2012));
         log.info("Seeded 3 demo companies");
     }
 
     private CreateCompanyInput company(String name, String industry, String city,
-                                       int employeeCount, int foundedYear) {
+                                       int employeeCount, int foundedYear, Long... employeeIds) {
         CreateCompanyInput input = new CreateCompanyInput();
         input.setName(name);
         input.setIndustry(industry);
         input.setCity(city);
         input.setEmployeeCount(employeeCount);
         input.setFoundedYear(foundedYear);
+        input.setEmployeeIds(new java.util.LinkedHashSet<>(java.util.Arrays.asList(employeeIds)));
         return input;
     }
 }

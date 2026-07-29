@@ -1,8 +1,12 @@
 package com.example.company.service.dto;
 
+import java.util.Set;
+
 /**
  * Input DTO of the createCompany mutation; same shape as the entity, so the
- * declarative mapper carries every field with zero mapping code.
+ * declarative mapper carries every field with zero mapping code. {@code employeeIds}
+ * are cross-service references: person ids owned by person-service, stored as bare
+ * keys (see PersonRef).
  */
 public class CreateCompanyInput {
 
@@ -11,6 +15,7 @@ public class CreateCompanyInput {
     private String city;
     private Integer employeeCount;
     private Integer foundedYear;
+    private Set<Long> employeeIds;
 
     public String getName() {
         return name;
@@ -50,5 +55,13 @@ public class CreateCompanyInput {
 
     public void setFoundedYear(Integer foundedYear) {
         this.foundedYear = foundedYear;
+    }
+
+    public Set<Long> getEmployeeIds() {
+        return employeeIds;
+    }
+
+    public void setEmployeeIds(Set<Long> employeeIds) {
+        this.employeeIds = employeeIds;
     }
 }

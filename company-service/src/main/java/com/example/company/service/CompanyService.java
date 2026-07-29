@@ -1,11 +1,13 @@
 package com.example.company.service;
 
 import com.example.infrastructure.mapping.DeclarativeMapper;
+import com.example.infrastructure.reference.ResourceRef;
 import com.example.infrastructure.replication.ResourceService;
 import com.example.company.dal.CompanyDal;
 import com.example.company.domain.Company;
 import com.example.company.service.dto.CompanyView;
 import com.example.company.service.dto.CreateCompanyInput;
+import com.example.company.service.dto.PersonRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -33,7 +35,10 @@ public class CompanyService extends ResourceService<Company, CompanyView> {
 
     @Override
     protected CompanyView toView(Company company) {
-        return declarativeMapper.map(company, CompanyView.class);
+        CompanyView view = declarativeMapper.map(company, CompanyView.class);
+        // cross-service references: stored person ids become id-only Person stubs
+        view.setEmployees(ResourceRef.toRefs(company.getEmployeeIds(), PersonRef::new));
+        return view;
     }
 
     @Transactional

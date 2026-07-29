@@ -12,6 +12,7 @@ A demo GraphQL service built with **Netflix DGS 4.9.x** / **graphql-java 17** on
 | [docs/FILTERING.md](docs/FILTERING.md) | Conceptual guide to filtering: predicate shapes, AND behavior, variables, result caps, and illustrative examples |
 | [docs/REPLICATION.md](docs/REPLICATION.md) | The sequence-based replication feed: `personsBySequence` paging, soft deletes, filtered replication with `filteredOutIds`, smart next-sequence |
 | [docs/API-WALKTHROUGH.md](docs/API-WALKTHROUGH.md) | Screenshot-guided tour of the four standard queries in the playground, including a complete replication polling session (import → resume → caught up) |
+| [docs/FEDERATION.md](docs/FEDERATION.md) | Separate services on one framework: cross-service id-only references (`Company.employees` → `Person` stubs) and the later-PR federation plan |
 | [docs/FILTER-COMPOSITION.md](docs/FILTER-COMPOSITION.md) | Agreed design for explicit `and`/`or`/`not` filter composition (not yet implemented) |
 | [docs/DAL-ALTERNATIVES.md](docs/DAL-ALTERNATIVES.md) | Data-access alternatives compared — including staying on Hibernate 6+ — with a revised recommendation |
 | [docs/UPGRADE-PERFORMANCE.md](docs/UPGRADE-PERFORMANCE.md) | Expected performance impact of Java / Spring Boot / DGS upgrade milestones |
@@ -54,16 +55,16 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
 ├── graphql-playground         <- domain-agnostic, reusable
 │   └── com.example.playground Self-hosted playground UI at /playground (no CDN)
 ├── perf-tests                 <- k6 black-box performance scenarios (see its README)
-├── company-service            <- second, deliberately minimal domain: shows how much a
-│   └── com.example.company    domain inherits (its four standard queries are pure
-│       ├── domain             wiring - CompanyDal and CompanyRepository are empty
-│       ├── dal                subclasses, CompanyService only maps entity->view,
-│       ├── service            CompanyGraphQLConfig registers factory-made resolvers)
-│       ├── graphql            createCompany / deleteCompany mutation resolvers
-│       ├── config             CompanyGraphQLConfig (model + 4 one-line query beans)
+├── company-service            <- second, deliberately minimal STANDALONE service (:8081,
+│   └── com.example.company    own H2/schema/API): shows how much a service inherits
+│       ├── domain             (its four standard queries are pure wiring - CompanyDal
+│       ├── dal                and CompanyRepository are empty subclasses, CompanyService
+│       ├── service            only maps entity->view). Company.employees returns id-only
+│       ├── graphql            Person stubs - the federation-ready cross-service
+│       ├── config             reference pattern (docs/FEDERATION.md)
 │       └── bootstrap          CompanyDataLoader (seed data)
-└── person-service             <- concrete Person domain, runnable Spring Boot app
-    └── com.example.person     (composes company-service in; declares base Query/Mutation)
+└── person-service             <- the Person service, runnable Spring Boot app (:8080,
+    └── com.example.person     own H2/schema/API; fully independent of company-service)
         ├── graphql.query      PersonByIdResolver, AllPersonsResolver, PersonsByCityResolver
         │                      (the standard filtered/replication queries are factory-made)
         ├── graphql.mutation   CreatePersonResolver, UpdatePersonSalaryResolver, DeletePersonResolver
@@ -77,10 +78,13 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
         └── bootstrap          DemoDataLoader (seed data)
 ```
 
-To add a new domain later: add a module with its own `schema/*.graphqls` file and a
-set of `GraphQLResolver` beans — nothing in `graphql-infrastructure` changes.
-`company-service` is the living example: its filtered list, replication feed, count
-and max-sequence queries are entirely inherited from the infrastructure. Full recipe:
+Each domain is its own GraphQL service — same framework ("how"), unique schema and
+API ("what"). To add a new domain: create another standalone service module —
+nothing in `graphql-infrastructure` changes. `company-service` is the living
+example: its filtered list, replication feed, count and max-sequence queries are
+entirely inherited from the infrastructure, and its `employees` field shows the
+federation-ready way to reference resources owned by another service
+([docs/FEDERATION.md](docs/FEDERATION.md)). Full recipe:
 [docs/EXTENDING.md](docs/EXTENDING.md#add-a-whole-new-domain-eg-company).
 
 ## The 3 layers

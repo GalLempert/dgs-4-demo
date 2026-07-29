@@ -6,16 +6,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The shared technical truth: every resource is a replicated resource, so Person and
- * Company both implement the single Resource schema interface and the technical fields
- * (id, version, createdAt, updatedAt, sequence, deleted) exist with identical shapes
- * on every resource and can even be selected through interface fragments. The Java
- * side mirrors it: every entity extends BaseEntity, every view extends ResourceView.
+ * The shared technical truth: every resource is a replicated resource, so Person
+ * implements the single Resource schema interface and the technical fields (id,
+ * version, createdAt, updatedAt, sequence, deleted) can be selected through interface
+ * fragments. The Java side mirrors it: every entity extends BaseEntity, every view
+ * extends ResourceView. (company-service, a separate service on the same framework,
+ * has the identical shape - covered by its own test suite.)
  */
 @SpringBootTest
 class ResourceInterfaceIntegrationTest {
@@ -25,27 +27,21 @@ class ResourceInterfaceIntegrationTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void technicalFieldsAreSelectableThroughTheSharedInterfaces() {
-        // the same interface fragments work on both resource types
+    void technicalFieldsAreSelectableThroughTheSharedInterface() {
         ExecutionResult result = dgsQueryExecutor.execute(
                 "{ persons(filter: { firstName: { equals: { value: \"Ada\" } } }) { "
-                        + "... on Resource { id version createdAt updatedAt sequence deleted } } "
-                        + "companies(filter: { name: { equals: { value: \"Initech\" } } }) { "
                         + "... on Resource { id version createdAt updatedAt sequence deleted } } }");
 
         assertThat(result.getErrors()).isEmpty();
         Map<String, Object> data = (Map<String, Object>) result.toSpecification().get("data");
-        Map<String, Object> ada = ((java.util.List<Map<String, Object>>) data.get("persons")).get(0);
-        Map<String, Object> initech = ((java.util.List<Map<String, Object>>) data.get("companies")).get(0);
+        Map<String, Object> ada = ((List<Map<String, Object>>) data.get("persons")).get(0);
 
-        for (Map<String, Object> resource : java.util.Arrays.asList(ada, initech)) {
-            assertThat(resource.get("id")).isNotNull();
-            assertThat(((Number) resource.get("version")).longValue()).isGreaterThanOrEqualTo(0L);
-            assertThat((String) resource.get("createdAt")).isNotBlank();
-            assertThat((String) resource.get("updatedAt")).isNotBlank();
-            assertThat(((Number) resource.get("sequence")).longValue()).isPositive();
-            assertThat(resource.get("deleted")).isEqualTo(false);
-        }
+        assertThat(ada.get("id")).isNotNull();
+        assertThat(((Number) ada.get("version")).longValue()).isGreaterThanOrEqualTo(0L);
+        assertThat((String) ada.get("createdAt")).isNotBlank();
+        assertThat((String) ada.get("updatedAt")).isNotBlank();
+        assertThat(((Number) ada.get("sequence")).longValue()).isPositive();
+        assertThat(ada.get("deleted")).isEqualTo(false);
     }
 
     @Test
@@ -77,10 +73,5 @@ class ResourceInterfaceIntegrationTest {
         String unix = dgsQueryExecutor.executeAndExtractJsonPath(
                 "{ personById(id: \"1\") { updatedAt(format: UNIX) } }", "data.personById.updatedAt");
         assertThat(unix).matches("\\d+");
-
-        String companyUnix = dgsQueryExecutor.executeAndExtractJsonPath(
-                "{ companies(filter: { name: { equals: { value: \"Globex\" } } }) { updatedAt(format: UNIX) } }",
-                "data.companies[0].updatedAt");
-        assertThat(companyUnix).matches("\\d+");
     }
 }

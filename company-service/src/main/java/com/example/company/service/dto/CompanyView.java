@@ -18,6 +18,9 @@ public class CompanyView extends ResourceView {
     private Integer employeeCount;
     private Integer foundedYear;
 
+    /** Cross-service references to persons owned by person-service (id-only stubs). */
+    private java.util.List<PersonRef> employees = java.util.Collections.emptyList();
+
     public String getName() {
         return name;
     }
@@ -56,5 +59,13 @@ public class CompanyView extends ResourceView {
 
     public void setFoundedYear(Integer foundedYear) {
         this.foundedYear = foundedYear;
+    }
+
+    public java.util.List<PersonRef> getEmployees() {
+        return employees;
+    }
+
+    public void setEmployees(java.util.List<PersonRef> employees) {
+        this.employees = employees;
     }
 }

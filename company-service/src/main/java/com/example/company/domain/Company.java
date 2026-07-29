@@ -2,14 +2,25 @@ package com.example.company.domain;
 
 import com.example.infrastructure.persistence.BaseEntity;
 
+import javax.persistence.CollectionTable;
 import javax.persistence.Column;
+import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.JoinColumn;
 import javax.persistence.Table;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * Deliberately flat second demo aggregate: enough fields to filter on, nothing else.
  * Extending {@link BaseEntity} is the only step needed for the company table to
  * be replicable through the {@code companiesBySequence} feed.
+ *
+ * <p>{@code employeeIds} are cross-service references: person ids owned by
+ * person-service, stored as bare keys and never validated or joined here - the owning
+ * service is the single source of truth (see the infrastructure {@code reference}
+ * package and {@code docs/FEDERATION.md}).
  */
 @Entity
 @Table(name = "company")
@@ -27,6 +38,11 @@ public class Company extends BaseEntity {
     private Integer employeeCount;
 
     private Integer foundedYear;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "company_employee", joinColumns = @JoinColumn(name = "company_id"))
+    @Column(name = "person_id")
+    private Set<Long> employeeIds = new LinkedHashSet<>();
 
     protected Company() {
         // for JPA
@@ -70,5 +86,13 @@ public class Company extends BaseEntity {
 
     public void setFoundedYear(Integer foundedYear) {
         this.foundedYear = foundedYear;
+    }
+
+    public Set<Long> getEmployeeIds() {
+        return employeeIds;
+    }
+
+    public void setEmployeeIds(Set<Long> employeeIds) {
+        this.employeeIds = employeeIds != null ? employeeIds : new LinkedHashSet<>();
     }
 }

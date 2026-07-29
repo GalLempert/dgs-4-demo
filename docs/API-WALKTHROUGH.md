@@ -1,23 +1,25 @@
 # API walkthrough — the four standard queries in the playground
 
 A guided tour of the API using the self-hosted playground, with real screenshots from
-a running instance. Every resource exposes the same four queries (filtered list,
+running instances. Each domain is its **own standalone GraphQL service** on the shared
+framework, and every resource exposes the same four queries (filtered list,
 replication feed, count-by-filter, max sequence — see
-[REPLICATION.md](REPLICATION.md) for the protocol), so everything shown here for
-`Person` works identically for `Company` and any future domain.
+[REPLICATION.md](REPLICATION.md) for the protocol), so everything shown here against
+the person service works identically on the company service and any future one.
 
 ## Getting started
 
 ```bash
 mvn package
-java -jar person-service/target/person-service-1.0.0-SNAPSHOT.jar
+java -jar person-service/target/person-service-1.0.0-SNAPSHOT.jar    # :8080
+java -jar company-service/target/company-service-1.0.0-SNAPSHOT.jar  # :8081 (optional, for section 5)
 ```
 
 Open **http://localhost:8080/playground**. The sidebar lists every query and mutation
-discovered from the schema — note the symmetric set for both domains (`persons…` /
-`companies…`). Click an operation to get a template, or paste the queries below.
-The service seeds three persons (Ada Lovelace, Alan Turing, Grace Hopper — sequences
-1–3) and three companies (Initech, Globex, Hooli) at startup.
+of *this* service's schema (each service has its own playground showing only its own
+API). Click an operation to get a template, or paste the queries below. The person
+service seeds Ada Lovelace, Alan Turing and Grace Hopper (sequences 1–3) at startup;
+the company service seeds Initech, Globex and Hooli.
 
 ## 1. Filtered resource query: `persons(filter)`
 
@@ -157,20 +159,29 @@ post-delete sequence, and with a **filter** the non-matching rows of a page are
 reported in `filteredOutIds` so a resource that "left" the filter gets dropped
 locally.
 
-## 5. Same queries, second domain
+## 5. Same queries, separate service
 
-The company module wrote no resolver, DAL or service code for its four standard
-queries — they're inherited from the infrastructure — yet the API surface is
-identical, on an independent per-table sequence:
+**http://localhost:8081/playground** is a different service entirely: own process,
+own database, own schema — its sidebar shows only company operations. Yet the API
+surface is identical, because the company module wrote no resolver, DAL or service
+code for its four standard queries; they're inherited from the framework, running on
+an independent per-table sequence.
+
+Note `employees { id }`: a **cross-service reference**. Persons are owned by
+person-service, so the company service stores only their ids and exposes an id-only
+`Person` stub type — clients resolve full persons from person-service by id, and a
+later PR turns exactly this shape into a federated reference a gateway resolves
+transparently (see [FEDERATION.md](FEDERATION.md)).
 
 ```graphql
 {
   companies(filter: { industry: { equals: { value: "Software" } } }) {
     id name industry sequence deleted
+    employees { id }
   }
   countCompaniesByFilter
   companyMaxSequence
 }
 ```
 
-![the same inherited queries on Company](images/playground-07-company-queries.png)
+![the same inherited queries on the standalone company service](images/playground-07-company-queries.png)

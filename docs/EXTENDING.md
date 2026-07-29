@@ -98,14 +98,18 @@ your enum service — same `EnumCatalog` interface. Models, schema, resolvers un
 
 ## Add a whole new domain (e.g. Company)
 
-The `company-service` module IS this recipe, executed — copy it. In short:
+The `company-service` module IS this recipe, executed — copy it. Each domain is its
+own standalone GraphQL service (own port, database, schema, API) built on the shared
+framework. In short:
 
-1. New Maven module depending on `graphql-infrastructure`; add it as a dependency of
-   the runnable app module so its beans and schema are composed in (the app class
-   already scans `com.example` for components, entities and repositories).
+1. New Maven module depending on `graphql-infrastructure` (+ `graphql-playground`,
+   web, JPA, H2), with its own `@SpringBootApplication` class (scanning
+   `com.example`, plus `@EntityScan`/`@EnableJpaRepositories` the same way) and its
+   own `application.yml` (own port and database name).
 2. `schema/company.graphqls` — types, queries, mutations, `CompanyFilter` composed
-   from the shared filter inputs. Use `extend type Query` / `extend type Mutation`:
-   the base types are declared once, by the hosting app's domain schema.
+   from the shared filter inputs. As a standalone service it declares its own base
+   `type Query` / `type Mutation`. References to resources owned by OTHER services
+   are id-only stub types (see `docs/FEDERATION.md` and `Company.employees`).
 3. Entity extending `BaseEntity` (every resource is a replicated resource); repository
    extending `ResourceRepository<X>`; DAL extending `ResourceDal<X>` (a 2-line
    constructor names the resource and its DB sequence).

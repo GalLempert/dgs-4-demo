@@ -13,10 +13,12 @@
     <artifactId>company-service</artifactId>
     <name>company-service</name>
     <description>
-        Second demo domain (Company), deliberately minimal: it exists to show how much a
-        domain module inherits from graphql-infrastructure. The whole replicated-resource
-        stack (filtered query, replication feed, count, max sequence, soft delete) is
-        subclassing plus bean wiring - no resolver, DAL or service logic of its own.
+        Second, standalone GraphQL service (Company domain), deliberately minimal: it
+        exists to show how much a service built on graphql-infrastructure inherits. The
+        whole replicated-resource stack (filtered query, replication feed, count, max
+        sequence, soft delete) is subclassing plus bean wiring - no resolver, DAL or
+        service logic of its own. Runs on its own port with its own database and schema;
+        references to Person resources are id-only stubs (federation preparation).
     </description>
 
     <dependencies>
@@ -24,5 +26,38 @@
             <groupId>com.example</groupId>
             <artifactId>graphql-infrastructure</artifactId>
         </dependency>
+        <!-- Self-hosted playground UI at /playground (no CDN, works offline) -->
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>graphql-playground</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <!-- In-memory, in-process database so the demo runs with zero setup -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 </project>

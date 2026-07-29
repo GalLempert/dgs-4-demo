@@ -1,15 +1,15 @@
-# Company domain schema, merged by DGS with every other schema/*.graphqls on the
-# classpath. The base Query/Mutation types are declared by the hosting app's domain
-# schema (person.graphqls), so this file extends them. Common scalars, EnumValue,
-# DateFormat and the *Filter inputs come from graphql-infrastructure.
+# Company service schema - a standalone GraphQL service, so it declares its own base
+# Query/Mutation types. Common scalars, EnumValue, DateFormat, the Resource interface
+# and the *Filter inputs come from graphql-infrastructure (DGS merges every
+# schema/*.graphqls on the classpath, including inside jars).
 
-extend type Query {
+type Query {
     "Filtered search; filters combine with AND. Guarded by the query result cap."
     companies(filter: CompanyFilter): [Company!]!
 
     """
-    Replication feed for companies - same protocol as personsBySequence: the next
-    bulkSize rows strictly after the given sequence, split into updated / deleted /
+    Replication feed: the next bulkSize companies whose replication sequence is
+    strictly greater than the given sequence, split into updated / deleted /
     filteredOutIds, with nextSequence as the resume point.
     """
     companiesBySequence(sequence: Long!, bulkSize: Int!, filter: CompanyFilter): CompanyReplicationPage!
@@ -21,10 +21,21 @@ extend type Query {
     companyMaxSequence: Long!
 }
 
-extend type Mutation {
+type Mutation {
     createCompany(input: CreateCompanyInput!): Company!
     "Soft delete: the company disappears from regular queries and travels through the feed"
     deleteCompany(id: ID!): Boolean!
+}
+
+"""
+FEDERATION-READY STUB - the Person resource is owned by person-service; only the key
+travels here. A company stores the person ids of its employees and never duplicates
+person data: clients resolve the full Person from person-service by id. A later PR
+turns this into a federated entity reference (@key on the owning type, @extends here)
+so a gateway resolves it transparently - see docs/FEDERATION.md.
+"""
+type Person {
+    id: ID!
 }
 
 "Implements the shared technical-truth interface: same id/version/timestamps/sequence/deleted shape as every other resource"
@@ -37,6 +48,8 @@ type Company implements Resource {
     city: String
     employeeCount: Int
     foundedYear: Int
+    "Cross-service references to persons owned by person-service (id-only stubs)"
+    employees: [Person!]!
     "Renders in the requested format (@GraphQLTemporal, inherited from ResourceView)"
     createdAt(format: DateFormat = ISO): String
     "Renders in the requested format (@GraphQLTemporal, inherited from ResourceView)"
@@ -61,6 +74,8 @@ input CreateCompanyInput {
     city: String
     employeeCount: Int
     foundedYear: Int
+    "Person ids (owned by person-service) to link as employees"
+    employeeIds: [ID!]
 }
 
 "Which Company fields are filterable, each with its type's predicate set"

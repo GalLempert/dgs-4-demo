@@ -152,9 +152,9 @@ The `person-service` and `company-service` modules are both wired exactly this w
 5. A `@Configuration` with one `@Bean GraphQLResolver` per standard query, built by
    `ReplicationResolverFactory` (`filteredList` / `bySequence` / `countByFilter` /
    `maxSequence`) + a `GraphQLModelSource` bean for the view class.
-6. `schema/<domain>.graphqls` declaring the fields (via `extend type Query` when
-   another module already declares the base type), the resource type as
-   `type X implements Resource` (repeating the interface fields, as GraphQL
-   requires), the `<X>ReplicationPage` type, and the `<X>Filter` input.
+6. `schema/<domain>.graphqls` declaring the service's own base `Query`/`Mutation`
+   types with the four fields, the resource type as `type X implements Resource`
+   (repeating the interface fields, as GraphQL requires), the `<X>ReplicationPage`
+   type, and the `<X>Filter` input.
 
 No resolver, DAL, or service logic is written for the four queries themselves.
