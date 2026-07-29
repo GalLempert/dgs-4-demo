@@ -32,6 +32,9 @@
  *   <li>{@link com.example.infrastructure.replication.ReplicationSequences} /
  *       {@link com.example.infrastructure.replication.ReplicationPage} - sequence
  *       allocation and the page/partitioning contract, used by the classes above.</li>
+ *   <li>{@link com.example.infrastructure.replication.ReplicationOutbox} - a
+ *       deliberate stub for the planned outbox-based, commit-ordered sequencing that
+ *       will replace inline allocation without locking the write path.</li>
  * </ul>
  */
 package com.example.infrastructure.replication;

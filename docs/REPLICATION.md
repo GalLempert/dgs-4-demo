@@ -79,22 +79,23 @@ keeps returning empty pages until the next write, with no row ever delivered twi
 
 ## Correctness under concurrency
 
-Two guarantees make the feed lossless when writers and pollers overlap:
-
-- **Sequence order matches commit-visibility order.** A database sequence alone
-  guarantees unique allocation, not commit order: T1 could allocate 1, stall, and
-  commit after T2 already committed 2 — a poll would advance past 2 and never see 1.
-  To prevent this, `ReplicationSequences.next()` first takes a row lock on the
-  resource's entry in the `replication_write_lock` table (one row per resource,
-  created at startup). Row locks are held until the transaction ends, so writers of
-  the *same* resource serialize: nobody allocates the next sequence until the previous
-  writer committed or rolled back. Writes to different resources are unaffected; a
-  rolled-back write leaves a harmless gap.
-- **An empty page never advances the cursor.** The page query and the max-sequence
-  query are separate reads; a write committing between them could otherwise be
-  advertised as `nextSequence` without its row ever having been returned. The cursor
-  therefore only moves forward along rows the client actually received
+- **An empty page never advances the cursor** (guaranteed). The page query and the
+  max-sequence query are separate reads; a write committing between them could
+  otherwise be advertised as `nextSequence` without its row ever having been returned.
+  The cursor therefore only moves forward along rows the client actually received
   (`min(requestedSequence, maxSequence)` on empty pages).
+- **Sequence order vs. commit order** (known, deliberate limitation). A database
+  sequence guarantees unique, increasing *allocation*, not commit order: T1 could
+  allocate 1, stall, and commit after T2 already committed 2 — a poll that advanced
+  past 2 will never see 1. Serializing writers with a per-table lock held until commit
+  would close the gap but was **rejected on purpose**: it queues every write on the
+  database. Sequence allocation therefore stays lock-free, and overlapping writers of
+  the same table carry this anomaly for now. The planned fix is the **outbox
+  pattern**, stubbed in `ReplicationOutbox` (infrastructure `replication` package):
+  the write transaction only inserts a change record; a single asynchronous relay
+  assigns the feed sequence in commit order and stamps the row outside the write
+  transaction — commit-ordered visibility with zero write-path locking, at the cost of
+  a short, bounded delay before a change appears in the feed.
 
 ### `countPersonsByFilter`
 

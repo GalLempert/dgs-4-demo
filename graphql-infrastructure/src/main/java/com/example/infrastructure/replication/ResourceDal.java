@@ -117,13 +117,14 @@ public abstract class ResourceDal<E extends BaseEntity> {
     }
 
     /**
-     * Persists the row, stamping a fresh replication sequence on it. Allocating the
-     * sequence serializes against other writers of the same resource until the
-     * surrounding transaction commits (see {@link ReplicationSequences#next}), so
-     * sequence order always matches commit-visibility order and a feed poll can never
-     * skip a lower sequence that commits late. The save is flushed immediately so
-     * database-managed values ({@code @Version}, {@code @PreUpdate} timestamps) are
-     * current on the returned entity - mutation responses report the committed state.
+     * Persists the row, stamping a fresh replication sequence on it. Allocation is
+     * lock-free by deliberate choice: under concurrent writers of the same table,
+     * sequence order can diverge from commit order (see
+     * {@link ReplicationSequences} for the documented anomaly and
+     * {@link ReplicationOutbox} for the planned commit-ordered replacement). The save
+     * is flushed immediately so database-managed values ({@code @Version},
+     * {@code @PreUpdate} timestamps) are current on the returned entity - mutation
+     * responses report the committed state.
      */
     public E save(E entity) {
         entity.setSequence(support.replicationSequences().next(sequenceName));
