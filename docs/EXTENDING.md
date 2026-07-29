@@ -98,15 +98,30 @@ your enum service — same `EnumCatalog` interface. Models, schema, resolvers un
 
 ## Add a whole new domain (e.g. Company)
 
-1. New Maven module depending on `graphql-infrastructure` (+ `graphql-playground` if
-   wanted); or a package in an existing app module.
+The `company-service` module IS this recipe, executed — copy it. Each domain is its
+own standalone GraphQL service (own port, database, schema, API) built on the shared
+framework. In short:
+
+1. New Maven module depending on `graphql-infrastructure` (+ `graphql-playground`,
+   web, JPA, H2), with its own `@SpringBootApplication` class (scanning
+   `com.example`, plus `@EntityScan`/`@EnableJpaRepositories` the same way) and its
+   own `application.yml` (own port and database name).
 2. `schema/company.graphqls` — types, queries, mutations, `CompanyFilter` composed
-   from the shared filter inputs.
-3. Entity/entities extending `BaseEntity`; repository (+ `JpaSpecificationExecutor`
-   for filtering); a DAL wrapping it with the `QueryResultCap`.
-4. Service + views (annotate with `@GraphQLModel("Company")` and register via one
-   `GraphQLModelSource` bean); `DeclarativeMapper` for the pass-through mapping.
-5. `GraphQLResolver` beans for each operation; JSON schemas under `json-schema/`.
+   from the shared filter inputs. As a standalone service it declares its own base
+   `type Query` / `type Mutation`. References to resources owned by OTHER services
+   are id-only stub types (see `docs/FEDERATION.md` and `Company.employees`).
+3. Entity extending `BaseEntity` (every resource is a replicated resource); repository
+   extending `ResourceRepository<X>`; DAL extending `ResourceDal<X>` (a 2-line
+   constructor names the resource and its DB sequence).
+4. Service extending `ResourceService<X, XView>` — implement `toView`; views extend
+   `ResourceView` (technical fields inherited), are annotated with
+   `@GraphQLModel("Company")` and registered via one `GraphQLModelSource` bean;
+   `DeclarativeMapper` for the pass-through mapping. In the schema, declare
+   `type Company implements Resource`.
+5. The four standard queries (filtered list, replication feed, count, max sequence)
+   are one `@Bean` each via `ReplicationResolverFactory` — see `CompanyGraphQLConfig`.
+   Hand-written `GraphQLResolver` beans only for domain-specific operations
+   (mutations, special lookups); JSON schemas under `json-schema/` as needed.
 
 Nothing in `graphql-infrastructure` changes — that's the acceptance test for the
 module split.

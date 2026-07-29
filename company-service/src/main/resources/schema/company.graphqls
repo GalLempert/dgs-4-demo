@@ -1,0 +1,88 @@
+# Company service schema - a standalone GraphQL service, so it declares its own base
+# Query/Mutation types. Common scalars, EnumValue, DateFormat, the Resource interface
+# and the *Filter inputs come from graphql-infrastructure (DGS merges every
+# schema/*.graphqls on the classpath, including inside jars).
+
+type Query {
+    "Filtered search; filters combine with AND. Guarded by the query result cap."
+    companies(filter: CompanyFilter): [Company!]!
+
+    """
+    Replication feed: the next bulkSize companies whose replication sequence is
+    strictly greater than the given sequence, split into updated / deleted /
+    filteredOutIds, with nextSequence as the resume point.
+    """
+    companiesBySequence(sequence: Long!, bulkSize: Int!, filter: CompanyFilter): CompanyReplicationPage!
+
+    "Counts matching companies; soft-deleted rows are excluded unless includeDeleted."
+    countCompaniesByFilter(filter: CompanyFilter, includeDeleted: Boolean = false): Int!
+
+    "Highest replication sequence in the company table (0 when empty)."
+    companyMaxSequence: Long!
+}
+
+type Mutation {
+    createCompany(input: CreateCompanyInput!): Company!
+    "Soft delete: the company disappears from regular queries and travels through the feed"
+    deleteCompany(id: ID!): Boolean!
+}
+
+"""
+FEDERATION-READY STUB - the Person resource is owned by person-service; only the key
+travels here. A company stores the person ids of its employees and never duplicates
+person data: clients resolve the full Person from person-service by id. A later PR
+turns this into a federated entity reference (@key on the owning type, @extends here)
+so a gateway resolves it transparently - see docs/FEDERATION.md.
+"""
+type Person {
+    id: ID!
+}
+
+"Implements the shared technical-truth interface: same id/version/timestamps/sequence/deleted shape as every other resource"
+type Company implements Resource {
+    id: ID!
+    "Optimistic-locking counter, incremented on every update"
+    version: Long!
+    name: String!
+    industry: String
+    city: String
+    employeeCount: Int
+    foundedYear: Int
+    "Cross-service references to persons owned by person-service (id-only stubs)"
+    employees: [Person!]!
+    "Renders in the requested format (@GraphQLTemporal, inherited from ResourceView)"
+    createdAt(format: DateFormat = ISO): String
+    "Renders in the requested format (@GraphQLTemporal, inherited from ResourceView)"
+    updatedAt(format: DateFormat = ISO): String
+    "Replication sequence, re-assigned on every write; drives the companiesBySequence feed"
+    sequence: Long!
+    "Soft-delete marker; deleted companies appear only in the replication feed"
+    deleted: Boolean!
+}
+
+"One page of the companiesBySequence replication feed"
+type CompanyReplicationPage {
+    updated: [Company!]!
+    deleted: [Company!]!
+    filteredOutIds: [ID!]!
+    nextSequence: Long!
+}
+
+input CreateCompanyInput {
+    name: String!
+    industry: String
+    city: String
+    employeeCount: Int
+    foundedYear: Int
+    "Person ids (owned by person-service) to link as employees"
+    employeeIds: [ID!]
+}
+
+"Which Company fields are filterable, each with its type's predicate set"
+input CompanyFilter {
+    name: StringFilter
+    industry: StringFilter
+    city: StringFilter
+    employeeCount: IntFilter
+    foundedYear: IntFilter
+}

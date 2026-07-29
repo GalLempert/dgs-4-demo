@@ -10,6 +10,9 @@ A demo GraphQL service built with **Netflix DGS 4.9.x** / **graphql-java 17** on
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | In-depth architecture: modules, the three layers, startup wiring, the full life of a request, design principles, config reference, testing strategy |
 | [docs/EXTENDING.md](docs/EXTENDING.md) | Cookbook: add a field / constraint / calculated value / custom presentation / query / filter predicate / error code / whole domain |
 | [docs/FILTERING.md](docs/FILTERING.md) | Conceptual guide to filtering: predicate shapes, AND behavior, variables, result caps, and illustrative examples |
+| [docs/REPLICATION.md](docs/REPLICATION.md) | The sequence-based replication feed: `personsBySequence` paging, soft deletes, filtered replication with `filteredOutIds`, smart next-sequence |
+| [docs/API-WALKTHROUGH.md](docs/API-WALKTHROUGH.md) | Screenshot-guided tour of the four standard queries in the playground, including a complete replication polling session (import → resume → caught up) |
+| [docs/FEDERATION.md](docs/FEDERATION.md) | Separate services on one framework: cross-service id-only references (`Company.employees` → `Person` stubs) and the later-PR federation plan |
 | [docs/FILTER-COMPOSITION.md](docs/FILTER-COMPOSITION.md) | Agreed design for explicit `and`/`or`/`not` filter composition (not yet implemented) |
 | [docs/DAL-ALTERNATIVES.md](docs/DAL-ALTERNATIVES.md) | Data-access alternatives compared — including staying on Hibernate 6+ — with a revised recommendation |
 | [docs/UPGRADE-PERFORMANCE.md](docs/UPGRADE-PERFORMANCE.md) | Expected performance impact of Java / Spring Boot / DGS upgrade milestones |
@@ -28,7 +31,9 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
 │       │                      GraphQLResolverRegistry, GraphQLOperationType
 │       ├── graphql.arguments  GraphQLArgumentMapper (typed access to raw arguments)
 │       ├── graphql.model      @GraphQLModel/@GraphQLEnum/@GraphQLTemporal annotations
-│       │                      + AnnotatedFieldResolverFactory (field presentation)
+│       │                      + AnnotatedFieldResolverFactory (field presentation),
+│       │                      ResourceView (shared technical-field view base) +
+│       │                      GraphQLModelTypeResolver (Resource interface resolution)
 │       ├── graphql.format     TemporalFormatter strategies (ISO/UNIX/RFC_1123)
 │       ├── graphql.error      GraphQLExceptionHandler (global error boundary)
 │       ├── graphql.scalars    TemporalScalar template + Date / DateTime scalars
@@ -40,28 +45,47 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
 │       ├── filter             FilterParser, FilterSpecificationBuilder (dynamic WHERE),
 │       │                      FilterPredicateStrategy beans, QueryResultCap
 │       ├── validation         JsonSchemaValidationService + SchemaValidationException
-│       ├── persistence        BaseEntity (id + audit timestamps)
+│       ├── persistence        BaseEntity: id, audit timestamps, @Version, replication
+│       │                      sequence, soft delete (every resource is replicated)
+│       ├── replication        the complete resource stack: ResourceRepository,
+│       │                      ResourceDal (+Support), ResourceService,
+│       │                      ReplicationResolverFactory, ReplicationSequences,
+│       │                      ReplicationPage
 │       └── support            UniqueIndex (fail-fast strategy registries)
 ├── graphql-playground         <- domain-agnostic, reusable
 │   └── com.example.playground Self-hosted playground UI at /playground (no CDN)
 ├── perf-tests                 <- k6 black-box performance scenarios (see its README)
-└── person-service             <- concrete Person domain, runnable Spring Boot app
-    └── com.example.person
-        ├── graphql.query      PersonByIdResolver, AllPersonsResolver,
-        │                      PersonsByCityResolver, PersonsResolver (filtered)
+├── company-service            <- second, deliberately minimal STANDALONE service (:8081,
+│   └── com.example.company    own H2/schema/API): shows how much a service inherits
+│       ├── domain             (its four standard queries are pure wiring - CompanyDal
+│       ├── dal                and CompanyRepository are empty subclasses, CompanyService
+│       ├── service            only maps entity->view). Company.employees returns id-only
+│       ├── graphql            Person stubs - the federation-ready cross-service
+│       ├── config             reference pattern (docs/FEDERATION.md)
+│       └── bootstrap          CompanyDataLoader (seed data)
+└── person-service             <- the Person service, runnable Spring Boot app (:8080,
+    └── com.example.person     own H2/schema/API; fully independent of company-service)
+        ├── graphql.query      PersonByIdResolver, AllPersonsResolver, PersonsByCityResolver
+        │                      (the standard filtered/replication queries are factory-made)
         ├── graphql.mutation   CreatePersonResolver, UpdatePersonSalaryResolver, DeletePersonResolver
-        ├── service            PersonService (orchestration + business rules),
-        │                      PersonCalculations (pure math), PersonMapper (entity<->dto),
-        │                      dto (views / inputs)
-        ├── dal                PersonDal + PersonRepository (Spring Data JPA + Specifications)
+        ├── service            PersonService (business rules; standard behavior inherited
+        │                      from ResourceService), PersonCalculations (pure math),
+        │                      PersonMapper (entity<->dto), dto (views / inputs)
+        ├── dal                PersonDal (extends ResourceDal) + PersonRepository
         ├── domain             Person, Address (embedded), PhoneNumber (one-to-many), enums
-        ├── config             PersonGraphQLConfig (model registration), PersonEnumCatalog
+        ├── config             PersonGraphQLConfig (model registration + 4 one-line query beans),
+        │                      PersonEnumCatalog
         └── bootstrap          DemoDataLoader (seed data)
 ```
 
-To add a new domain later: add a module with its own `schema/*.graphqls` file and a
-set of `GraphQLResolver` beans — nothing in `graphql-infrastructure` changes. Full
-recipe: [docs/EXTENDING.md](docs/EXTENDING.md#add-a-whole-new-domain-eg-company).
+Each domain is its own GraphQL service — same framework ("how"), unique schema and
+API ("what"). To add a new domain: create another standalone service module —
+nothing in `graphql-infrastructure` changes. `company-service` is the living
+example: its filtered list, replication feed, count and max-sequence queries are
+entirely inherited from the infrastructure, and its `employees` field shows the
+federation-ready way to reference resources owned by another service
+([docs/FEDERATION.md](docs/FEDERATION.md)). Full recipe:
+[docs/EXTENDING.md](docs/EXTENDING.md#add-a-whole-new-domain-eg-company).
 
 ## The 3 layers
 

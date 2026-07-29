@@ -3,6 +3,7 @@ package com.example.person.service;
 import com.example.infrastructure.error.DuplicateResourceException;
 import com.example.infrastructure.error.EntityNotFoundException;
 import com.example.infrastructure.filter.FilterCriteria;
+import com.example.infrastructure.replication.ResourceService;
 import com.example.person.dal.PersonDal;
 import com.example.person.domain.Person;
 import com.example.person.service.dto.CreatePersonInput;
@@ -14,15 +15,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
- * Business layer of the person domain: orchestrates the DAL, enforces business rules
- * (e.g. email uniqueness) and returns {@link PersonView}s enriched by
+ * Business layer of the person domain. The standard behavior of a replicated resource
+ * (filtered find, replication feed, count, max sequence, soft delete) is inherited
+ * from {@link ResourceService}; this class adds the person-specific rules
+ * (email uniqueness, salary updates, city lookup) and the view mapping enriched by
  * {@link PersonCalculations} through the {@link PersonMapper}.
  */
 @Service
-public class PersonService {
+public class PersonService extends ResourceService<Person, PersonView> {
 
     private static final Logger log = LoggerFactory.getLogger(PersonService.class);
 
@@ -30,8 +32,14 @@ public class PersonService {
     private final PersonMapper personMapper;
 
     public PersonService(PersonDal personDal, PersonMapper personMapper) {
+        super(personDal);
         this.personDal = personDal;
         this.personMapper = personMapper;
+    }
+
+    @Override
+    protected PersonView toView(Person person) {
+        return personMapper.toView(person);
     }
 
     @Transactional(readOnly = true)
@@ -42,14 +50,7 @@ public class PersonService {
 
     @Transactional(readOnly = true)
     public List<PersonView> getAllPersons() {
-        return findPersons(FilterCriteria.none());
-    }
-
-    @Transactional(readOnly = true)
-    public List<PersonView> findPersons(FilterCriteria criteria) {
-        List<PersonView> views = toViews(personDal.findAll(criteria));
-        log.debug("Fetched {} persons for {}", views.size(), criteria);
-        return views;
+        return find(FilterCriteria.none());
     }
 
     @Transactional(readOnly = true)
@@ -76,17 +77,6 @@ public class PersonService {
         return personMapper.toView(personDal.save(person));
     }
 
-    @Transactional
-    public boolean deletePerson(long id) {
-        if (!personDal.exists(id)) {
-            log.info("Delete requested for person {} but it does not exist", id);
-            return false;
-        }
-        personDal.deleteById(id);
-        log.info("Deleted person {}", id);
-        return true;
-    }
-
     private Person requirePerson(long id) {
         return personDal.findById(id)
                 .orElseThrow(() -> EntityNotFoundException.of("Person", id));
@@ -96,9 +86,5 @@ public class PersonService {
         if (personDal.emailExists(email)) {
             throw new DuplicateResourceException("A person with email " + email + " already exists", "email");
         }
-    }
-
-    private List<PersonView> toViews(List<Person> persons) {
-        return persons.stream().map(personMapper::toView).collect(Collectors.toList());
     }
 }

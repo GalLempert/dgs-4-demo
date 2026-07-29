@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A demo GraphQL service built with Netflix DGS 4.9.x / graphql-java 17 on Spring Boot 2.4.2, Spring Data JPA / Hibernate 5.4, Java 11. Multi-module Maven project split into a reusable, domain-agnostic GraphQL infrastructure and a concrete Person domain.
+A demo GraphQL stack built with Netflix DGS 4.9.x / graphql-java 17 on Spring Boot 2.4.2, Spring Data JPA / Hibernate 5.4, Java 11. Multi-module Maven project: a reusable, domain-agnostic GraphQL infrastructure (the framework — the shared "how") and two completely separate runnable services built on it (person-service :8080, company-service :8081 — each its own process, database, schema and API; the unique "what"). Cross-service links are id-only reference stubs, federation-ready (`docs/FEDERATION.md`).
 
 ## Commands
 
@@ -23,13 +23,17 @@ java -jar person-service/target/person-service-1.0.0-SNAPSHOT.jar            # r
 
 ## Architecture
 
-Detailed docs exist and should be consulted before structural changes: `docs/ARCHITECTURE.md` (module split, startup wiring, life of a request), `docs/EXTENDING.md` (step-by-step recipes for adding fields, filters, predicates, error codes, whole domains), `docs/FILTERING.md`, `docs/FILTER-COMPOSITION.md` (designed but NOT yet implemented), `docs/DAL-ALTERNATIVES.md`, `docs/UPGRADE-PERFORMANCE.md`.
+Detailed docs exist and should be consulted before structural changes: `docs/ARCHITECTURE.md` (module split, startup wiring, life of a request), `docs/EXTENDING.md` (step-by-step recipes for adding fields, filters, predicates, error codes, whole domains), `docs/FILTERING.md`, `docs/FILTER-COMPOSITION.md` (designed but NOT yet implemented), `docs/REPLICATION.md` (sequence-based replication feed: `personsBySequence`, soft deletes, filtered replication), `docs/FEDERATION.md` (separate services, cross-service id-only references, later-PR federation plan), `docs/API-WALKTHROUGH.md` (screenshot-guided playground tour of the four standard queries), `docs/DAL-ALTERNATIVES.md`, `docs/UPGRADE-PERFORMANCE.md`.
 
 ### Module split (the core invariant)
 
 - `graphql-infrastructure` — domain-agnostic library. **Must compile and make sense with zero knowledge of any domain.** Ships contracts (`GraphQLResolver`, `FilterPredicateStrategy`, `EnumCatalog`, `ExceptionMapper`), machinery (dispatch, JSON-schema validation, filtering, declarative mapping, error rendering), and shared schema `schema/common.graphqls` (DGS merges every `schema/*.graphqls` on the classpath, including inside jars).
 - `graphql-playground` — domain-agnostic self-hosted playground UI.
-- `person-service` — the runnable Spring Boot app: entities, DTOs, `PersonService`, thin resolvers, seed data. A new domain is added as another module contributing beans + its own `schema/*.graphqls`; the infrastructure discovers them via Spring DI and nothing in it changes.
+- `company-service` — second, deliberately minimal standalone service proving the reuse: its four standard queries (filtered list, replication feed, count, max sequence) are entirely inherited — `CompanyRepository`/`CompanyDal` are empty subclasses, `CompanyService` only supplies entity→view mapping, and `CompanyGraphQLConfig` registers four factory-made resolver beans. Runs on :8081 with its own H2 (`companydb`) and declares its own base `Query`/`Mutation` types. Demonstrates cross-service references: `Company.employees` returns id-only `Person` stubs (`PersonRef extends ResourceRef`; persons are owned by person-service and never duplicated).
+- `person-service` — the Person service (:8080, H2 `persondb`): entities, DTOs, `PersonService`, thin resolvers, seed data. The two services are completely independent at runtime — same framework, separate schemas/APIs/databases. A new domain is added as another standalone service module: copy the company-service shape; nothing in the infrastructure changes.
+- **Cross-service references (federation preparation)**: infrastructure `reference` package — `ResourceRef` is an id-only view base; a referencing service declares a one-line subclass + a key-only schema stub named after the real type (see `docs/FEDERATION.md`). Only keys cross service boundaries; actual federation (`@key`/`@extends`, entity fetchers, gateway) is a planned later PR.
+- **Every resource is a replicated resource**: entities extending `BaseEntity` get the whole replication stack (see `docs/REPLICATION.md`) from the infrastructure `replication` package: `ResourceRepository` → `ResourceDal` → `ResourceService` → `ReplicationResolverFactory`. A domain wires them with empty/near-empty subclasses plus one `@Bean` per standard query field. Every write stamps a fresh per-table sequence; deletes are soft (`softDelete`) and regular reads exclude deleted rows.
+- **Technical truth, declared once**: the technical fields every resource has (id, optimistic-locking `version`, createdAt, updatedAt, sequence, deleted) live in a single base per representation — entities: `BaseEntity`; view DTOs: `ResourceView`; GraphQL schema: `interface Resource` (in `common.graphqls`; every resource type declares `implements Resource`). `GraphQLModelTypeResolver` resolves concrete types for interface-typed fields via `@GraphQLModel`. Domain types never redeclare these fields in Java — only in their schema type (GraphQL requires implementing types to repeat interface fields).
 - Every infrastructure package has a `package-info.java` stating its purpose — keep these current.
 
 ### The three layers and their boundary rules

@@ -7,6 +7,39 @@ type Query {
     personsByCity(city: String!): [Person!]!
     "Filtered search; filters combine with AND. Guarded by the query result cap."
     persons(filter: PersonFilter): [Person!]!
+
+    """
+    Replication feed: the next bulkSize persons whose replication sequence is
+    strictly greater than the given sequence, in sequence order. Deleted persons are
+    included (in the deleted part) so clients can mirror deletions. With a filter,
+    updated/deleted contain only matching persons and filteredOutIds lists the ids in
+    the page that no longer match - drop those locally. Poll again from nextSequence.
+    """
+    personsBySequence(sequence: Long!, bulkSize: Int!, filter: PersonFilter): PersonReplicationPage!
+
+    "Counts matching persons; soft-deleted rows are excluded unless includeDeleted."
+    countPersonsByFilter(filter: PersonFilter, includeDeleted: Boolean = false): Int!
+
+    "Highest replication sequence in the person table (0 when empty) - the live tail to start polling from."
+    personMaxSequence: Long!
+}
+
+"One page of the personsBySequence replication feed"
+type PersonReplicationPage {
+    "Live persons in the page that match the filter (all live persons when no filter): upsert locally"
+    updated: [Person!]!
+    "Soft-deleted persons in the page that match the filter: delete locally"
+    deleted: [Person!]!
+    "Ids in the page that do NOT match the filter: drop any local copy"
+    filteredOutIds: [ID!]!
+    """
+    Resume point for the next poll: the highest sequence in the page. On an empty page
+    the cursor never moves forward - it only snaps an over-shot cursor down to the
+    table's actual maximum sequence, so an over-shot client resumes from a real
+    position and no concurrently committed row can ever be skipped. The feed is
+    strictly-greater-than, so re-sending it yields an empty page until the next write.
+    """
+    nextSequence: Long!
 }
 
 type Mutation {
@@ -15,8 +48,11 @@ type Mutation {
     deletePerson(id: ID!): Boolean!
 }
 
-type Person {
+"Implements the shared technical-truth interface: same id/version/timestamps/sequence/deleted shape as every other resource"
+type Person implements Resource {
     id: ID!
+    "Optimistic-locking counter, incremented on every update"
+    version: Long!
     firstName: String!
     lastName: String!
     "Calculated by the service layer"
@@ -45,8 +81,14 @@ type Person {
     address: Address
     phoneNumbers: [PhoneNumber!]!
     hobbies: [String!]!
-    "Renders in the requested format (@GraphQLTemporal on PersonView)"
+    "Renders in the requested format (@GraphQLTemporal, inherited from ResourceView)"
     createdAt(format: DateFormat = ISO): String
+    "Renders in the requested format (@GraphQLTemporal, inherited from ResourceView)"
+    updatedAt(format: DateFormat = ISO): String
+    "Replication sequence, re-assigned on every write; drives the personsBySequence feed"
+    sequence: Long!
+    "Soft-delete marker; deleted persons appear only in the replication feed"
+    deleted: Boolean!
 }
 
 type Address {

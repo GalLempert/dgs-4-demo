@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.example</groupId>
+        <artifactId>dgs-demo</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>company-service</artifactId>
+    <name>company-service</name>
+    <description>
+        Second, standalone GraphQL service (Company domain), deliberately minimal: it
+        exists to show how much a service built on graphql-infrastructure inherits. The
+        whole replicated-resource stack (filtered query, replication feed, count, max
+        sequence, soft delete) is subclassing plus bean wiring - no resolver, DAL or
+        service logic of its own. Runs on its own port with its own database and schema;
+        references to Person resources are id-only stubs (federation preparation).
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>graphql-infrastructure</artifactId>
+        </dependency>
+        <!-- Self-hosted playground UI at /playground (no CDN, works offline) -->
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>graphql-playground</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <!-- In-memory, in-process database so the demo runs with zero setup -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

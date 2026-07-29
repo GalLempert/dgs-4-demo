@@ -31,6 +31,6 @@ public class DeletePersonResolver implements GraphQLResolver {
 
     @Override
     public Object resolve(DataFetchingEnvironment environment) {
-        return personService.deletePerson(argumentMapper.longArgument(environment, "id"));
+        return personService.softDelete(argumentMapper.longArgument(environment, "id"));
     }
 }

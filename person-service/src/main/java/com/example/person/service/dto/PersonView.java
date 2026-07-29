@@ -3,17 +3,20 @@ package com.example.person.service.dto;
 import com.example.infrastructure.graphql.model.GraphQLEnum;
 import com.example.infrastructure.graphql.model.GraphQLModel;
 import com.example.infrastructure.graphql.model.GraphQLTemporal;
+import com.example.infrastructure.graphql.model.ResourceView;
 import com.example.person.domain.Gender;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
 /**
  * What the GraphQL layer exposes for a person: all stored fields plus the values the
  * service layer calculates (fullName, age, yearsOfService, monthlyNetSalary, bmi).
+ * The technical fields (id, version, createdAt, updatedAt, sequence, deleted) are
+ * inherited from {@link ResourceView} - the schema mirrors this with
+ * {@code Person implements Resource}.
  *
  * <p>Presentation annotations declare which fields are serialized as more than their
  * raw value: {@code @GraphQLTemporal} fields take a {@code format} argument
@@ -21,9 +24,8 @@ import java.util.Set;
  * into {@code EnumValue} objects. Unannotated fields return their plain value.
  */
 @GraphQLModel("Person")
-public class PersonView {
+public class PersonView extends ResourceView {
 
-    private Long id;
     private String firstName;
     private String lastName;
     private String fullName;
@@ -52,17 +54,6 @@ public class PersonView {
     private AddressView address;
     private List<PhoneNumberView> phoneNumbers;
     private Set<String> hobbies;
-
-    @GraphQLTemporal
-    private LocalDateTime createdAt;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public String getFirstName() {
         return firstName;
@@ -214,13 +205,5 @@ public class PersonView {
 
     public void setHobbies(Set<String> hobbies) {
         this.hobbies = hobbies;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
     }
 }

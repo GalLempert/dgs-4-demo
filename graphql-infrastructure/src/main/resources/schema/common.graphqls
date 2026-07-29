@@ -4,6 +4,8 @@
 
 scalar Date
 scalar DateTime
+"64-bit signed integer (GraphQL's built-in Int is 32-bit); used for replication sequences"
+scalar Long
 
 "Output format for temporal fields annotated with @GraphQLTemporal on the model"
 enum DateFormat {
@@ -17,6 +19,29 @@ type EnumValue {
     code: String!
     label: String!
     description: String
+}
+
+# ---------------------------------------------------------------------------
+# The technical truth: every resource type implements this interface,
+# mirroring the entity side (BaseEntity) and the view side (ResourceView).
+# Every resource is a replicated resource, so the replication fields are part
+# of the same contract - clients can rely on identical technical fields, with
+# identical shapes, on every resource.
+# ---------------------------------------------------------------------------
+
+"Technical fields every resource exposes; every resource is replicable through its sequence-based feed"
+interface Resource {
+    id: ID!
+    "Optimistic-locking counter, incremented on every update"
+    version: Long!
+    "Renders in the requested format"
+    createdAt(format: DateFormat = ISO): String
+    "Renders in the requested format"
+    updatedAt(format: DateFormat = ISO): String
+    "Replication sequence, re-assigned on every write; drives the resource's <resources>BySequence feed"
+    sequence: Long!
+    "Soft-delete marker; deleted resources appear only in the replication feed"
+    deleted: Boolean!
 }
 
 # ---------------------------------------------------------------------------

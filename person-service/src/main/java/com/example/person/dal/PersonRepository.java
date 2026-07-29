@@ -1,18 +1,21 @@
 package com.example.person.dal;
 
+import com.example.infrastructure.replication.ResourceRepository;
 import com.example.person.domain.Person;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+/**
+ * The replication feed queries are inherited from {@link ResourceRepository}; only
+ * genuinely person-specific derived queries live here.
+ */
 @Repository
-public interface PersonRepository extends JpaRepository<Person, Long>, JpaSpecificationExecutor<Person> {
+public interface PersonRepository extends ResourceRepository<Person> {
 
-    List<Person> findByAddressCityIgnoreCase(String city);
+    List<Person> findByAddressCityIgnoreCaseAndDeletedFalse(String city);
 
-    long countByAddressCityIgnoreCase(String city);
+    long countByAddressCityIgnoreCaseAndDeletedFalse(String city);
 
     boolean existsByEmailIgnoreCase(String email);
 }
