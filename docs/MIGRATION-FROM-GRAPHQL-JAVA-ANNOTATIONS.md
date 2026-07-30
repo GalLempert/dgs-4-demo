@@ -88,6 +88,13 @@ This file matters for two reasons:
 
 1. **It bootstraps your `.graphqls` files.** Split it into
    `src/main/resources/schema/<domain>.graphqls`; you write almost no SDL by hand.
+   One correction while splitting: **delete the `scalar` declarations the
+   infrastructure already ships** — `Long`, `Date` and `DateTime` are declared in
+   `common.graphqls`, which DGS merges from the classpath, and declaring a type twice
+   fails the schema build at boot. Keep the *uses* of those scalars on your fields;
+   drop only the printed declarations. The same rule applies to any other printed name
+   that collides with `common.graphqls` (`DateFormat`, `EnumValue`, the filter inputs)
+   if you adopt those features.
 2. **It pins the contract.** graphql-java-annotations *derives* names — method
    `getFoo()` becomes field `foo`, input types get generated names like `PersonInput`,
    Java `long` becomes its own `Long` scalar. Clients depend on the derived names,
@@ -115,11 +122,18 @@ Create your service as a module depending on the infrastructure (copy
 
 Then **remove** from your build:
 
-- the graphql-java-annotations dependency and the in-house framework jar;
+- the in-house framework jar and your hand-rolled controller/servlet registration;
 - **any direct `graphql-java` pin** — its version is owned by the DGS BOM
   (`graphql-dgs-platform-dependencies`). A leftover pin from the old framework is the
-  most likely way to break the new stack silently;
-- your hand-rolled controller/servlet registration.
+  most likely way to break the new stack silently.
+
+**Keep the graphql-java-annotations dependency for now** in any module whose sources
+still carry `@GraphQLField`/`@GraphQLName`/`@GraphQLDataFetcher`: nothing reads those
+annotations anymore, but the annotation *types* must stay on the compile classpath or
+the annotated entity/DTO modules stop compiling. Stripping the annotations and then
+dropping the dependency is the explicit **last** step of the migration (§12, step 7).
+While it lingers, check with `mvn dependency:tree` that the DGS BOM's graphql-java
+wins over anything the old library pulls in.
 
 Keep your service-layer, DAL and entity modules exactly as they are and depend on them
 from the new module. Mind the parent POM's documented landmines (README, "Library
@@ -266,14 +280,30 @@ pick per field:
 
 - **`Long`**: graphql-java-annotations mapped Java `long` to a `Long` scalar of its
   own; the infrastructure ships one (`common.graphqls` + `LongScalar`) under the same
-  name, so printed SDL using `Long` works as-is. `Date`/`DateTime` likewise exist; any
-  other custom scalar of yours becomes a small `@DgsScalar` `Coercing` bean.
+  name, so fields typed `Long` keep working — just remember the printed
+  `scalar Long` declaration itself must be deleted from your copied SDL (§3).
+  `Date`/`DateTime` likewise exist; any other custom scalar of yours becomes a small
+  `@DgsScalar` `Coercing` bean.
 - **Enums**: a plain SDL `enum` + Java enum of the same constant names needs nothing.
   If your old API exposed enriched enum objects (code + label), that's the
   `EnumCatalog`/`EnumValue`/`@GraphQLEnum` mechanism.
-- **Interfaces/unions**: declare in SDL; concrete Java classes annotated
-  `@GraphQLModel("TypeName")` are resolved by `GraphQLModelTypeResolver` — this replaces
-  your `@GraphQLTypeResolver` implementations.
+- **Interfaces/unions**: declare in SDL. Every abstract type needs a type resolver,
+  and the infrastructure's `GraphQLModelTypeResolver` covers only the technical
+  `Resource` interface. For each interface/union of your own, replace the old
+  `@GraphQLTypeResolver` implementation with a small `@DgsTypeResolver` method — the
+  `@GraphQLModel` annotation serves as the source of concrete type names, the same
+  pattern `GraphQLModelTypeResolver` uses for `Resource`:
+
+  ```java
+  @DgsComponent
+  public class VehicleTypeResolver {
+
+      @DgsTypeResolver(name = "Vehicle")
+      public String resolveVehicle(Object value) {
+          return value.getClass().getAnnotation(GraphQLModel.class).value();
+      }
+  }
+  ```
 
 ## 9. Step 6 — errors
 
@@ -341,3 +371,5 @@ complete minimal wiring, `docs/EXTENDING.md` for recipes):
 6. At leisure: convert adapted fetchers to first-class resolvers (§5.2), move
    presentation to `@GraphQLModel` annotations (§7), adopt filtering/replication/
    standard mutations where they replace bespoke code (§11).
+7. Final cleanup: strip the now-inert graphql-java-annotations annotations from your
+   entity/DTO sources, then drop the library from the build entirely (§4).
