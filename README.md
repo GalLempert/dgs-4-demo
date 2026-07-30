@@ -16,6 +16,7 @@ A demo GraphQL service built with **Netflix DGS 4.9.x** / **graphql-java 17** on
 | [docs/FILTER-COMPOSITION.md](docs/FILTER-COMPOSITION.md) | Agreed design for explicit `and`/`or`/`not` filter composition (not yet implemented) |
 | [docs/DAL-ALTERNATIVES.md](docs/DAL-ALTERNATIVES.md) | Data-access alternatives compared — including staying on Hibernate 6+ — with a revised recommendation |
 | [docs/UPGRADE-PERFORMANCE.md](docs/UPGRADE-PERFORMANCE.md) | Expected performance impact of Java / Spring Boot / DGS upgrade milestones |
+| [docs/MIGRATION-FROM-GRAPHQL-JAVA-ANNOTATIONS.md](docs/MIGRATION-FROM-GRAPHQL-JAVA-ANNOTATIONS.md) | Migrating an existing code-first graphql-java-annotations service onto this framework: concept map, schema printing, the `DataFetcherAdapters` bridge, verification strategy |
 | [perf-tests/README.md](perf-tests/README.md) | k6 performance suite: rationale, scenarios, how to run, measured baseline |
 
 ## Module layout — infrastructure vs. domain
