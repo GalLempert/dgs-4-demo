@@ -22,9 +22,52 @@ type Query {
 }
 
 type Mutation {
+    "The name is the company's natural key and must be unique (DUPLICATE_RESOURCE otherwise)"
     createCompany(input: CreateCompanyInput!): Company!
     "Soft delete: the company disappears from regular queries and travels through the feed"
     deleteCompany(id: ID!): Boolean!
+
+    # ---- standard framework mutations (manufactured by MutationResolverFactory);
+    # ---- filtered mutations take the SAME CompanyFilter as the queries
+
+    """
+    Updates every company matching the filter: the input's non-null fields replace the
+    matching companies' values, everything else stays. An empty filter is rejected.
+    Bounded by the query result cap: more matches than the cap fail with
+    RESULT_SET_TOO_LARGE before any row changes.
+    """
+    updateCompanies(filter: CompanyFilter!, input: UpdateCompanyInput!): [Company!]!
+
+    """
+    Upsert: when no company matches the filter, creates one from input; otherwise
+    updates every match with updateInput (or with input when updateInput is omitted).
+    """
+    saveOrUpdateCompany(filter: CompanyFilter!, input: CreateCompanyInput!, updateInput: UpdateCompanyInput): [Company!]!
+
+    """
+    Create-or-replace by natural key (name): an unknown name creates the company; a
+    known name replaces the existing company's whole business state with the input.
+    Technical fields (id, version, timestamps, sequence) are preserved.
+    """
+    saveOrOverrideCompany(input: CreateCompanyInput!): Company!
+
+    """
+    Soft-deletes every company matching the filter and returns how many were deleted.
+    An empty filter is rejected; like updateCompanies, the write is bounded by the
+    query result cap.
+    """
+    deleteCompanies(filter: CompanyFilter!): Int!
+}
+
+"Partial-update payload of updateCompanies/saveOrUpdateCompany: every field optional; only non-null fields are applied"
+input UpdateCompanyInput {
+    name: String
+    industry: String
+    city: String
+    employeeCount: Int
+    foundedYear: Int
+    "Replaces the employee reference list as a whole when provided"
+    employeeIds: [ID!]
 }
 
 """

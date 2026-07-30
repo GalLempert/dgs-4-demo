@@ -95,9 +95,17 @@ public class GraphQLDispatchController {
         for (Map.Entry<String, String> validation : resolver.argumentJsonSchemas().entrySet()) {
             String argumentName = validation.getKey();
             String schemaName = validation.getValue();
+            Object argumentValue = environment.getArgument(argumentName);
+            if (argumentValue == null) {
+                // an absent optional argument has nothing to validate; required-ness
+                // is the GraphQL type system's job (non-null argument types)
+                log.debug("Skipping JSON schema '{}' for absent argument '{}' of '{}'",
+                        schemaName, argumentName, resolver.fieldName());
+                continue;
+            }
             log.debug("Validating argument '{}' of '{}' against JSON schema '{}'",
                     argumentName, resolver.fieldName(), schemaName);
-            jsonSchemaValidationService.validate(schemaName, environment.getArgument(argumentName));
+            jsonSchemaValidationService.validate(schemaName, argumentValue);
         }
 
         Object result = resolver.resolve(environment);

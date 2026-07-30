@@ -10,8 +10,9 @@
  * another change the poll picks up.
  *
  * <p>The whole stack of the four standard queries (filtered list, feed page, count,
- * max sequence) ships here, one layer per class - a domain module only subclasses and
- * wires beans:
+ * max sequence) and the five standard mutations (save-new, update-by-filter,
+ * save-or-update, save-or-override, delete-by-filter - see {@code docs/MUTATIONS.md})
+ * ships here, one layer per class - a domain module only subclasses and wires beans:
  *
  * <ul>
  *   <li>{@link com.example.infrastructure.replication.ResourceRepository} - Spring
@@ -22,13 +23,19 @@
  *       {@link com.example.infrastructure.replication.ResourceDalSupport} in the
  *       constructor.</li>
  *   <li>{@link com.example.infrastructure.replication.ResourceService} - complete
- *       service layer (feed orchestration and partitioning, counting, soft delete);
+ *       service layer (feed orchestration and partitioning, counting, soft delete,
+ *       and the write pipeline of the standard mutations with its overridable hooks:
+ *       validate, calculateDerivedFields, naturalKeyOf, input application);
  *       subclass supplies the entity-to-view mapping (views extend
  *       {@link com.example.infrastructure.graphql.model.ResourceView}, which carries
  *       the technical fields backing the {@code Resource} schema interface).</li>
  *   <li>{@link com.example.infrastructure.replication.ReplicationResolverFactory} -
  *       manufactures the four query resolvers; the domain registers one
  *       {@code @Bean} per schema field.</li>
+ *   <li>{@link com.example.infrastructure.replication.MutationResolverFactory} -
+ *       the write counterpart: manufactures the standard mutation resolvers (plus
+ *       the id-based delete), same one-bean-per-field wiring, same filter language
+ *       as the queries.</li>
  *   <li>{@link com.example.infrastructure.replication.ReplicationSequences} /
  *       {@link com.example.infrastructure.replication.ReplicationPage} - sequence
  *       allocation and the page/partitioning contract, used by the classes above.</li>
