@@ -58,6 +58,7 @@ guarantees the new service is a drop-in replacement.
 | Method-parameter argument injection (`@GraphQLName("id") long id`) | `DataFetchingEnvironment.getArgument("id")`, with `GraphQLArgumentMapper` for typed/DTO conversion (§6) |
 | In-house error handling in the controller | `GraphQLExceptionHandler` global boundary: throw `ApiException` subclasses with an `ErrorCode`, or add an `ExceptionMapper` bean per third-party exception type (`docs/EXTENDING.md`) |
 | In-house request/response tweaks (interceptors) | graphql-java `Instrumentation` beans — DGS discovers and chains them (example: `NullFieldOmittingInstrumentation`) |
+| In-house playground/console UI | `graphql-playground` module — self-hosted, no CDN; URL, endpoint and on/off are properties (§10) |
 
 One thing that does **not** change: `DataFetchingEnvironment`. Your in-house framework
 sits on graphql-java, and so does DGS. The environment object your fetchers already
@@ -131,7 +132,7 @@ Then **remove** from your build:
 still carry `@GraphQLField`/`@GraphQLName`/`@GraphQLDataFetcher`: nothing reads those
 annotations anymore, but the annotation *types* must stay on the compile classpath or
 the annotated entity/DTO modules stop compiling. Stripping the annotations and then
-dropping the dependency is the explicit **last** step of the migration (§12, step 7).
+dropping the dependency is the explicit **last** step of the migration (§13, step 8).
 While it lingers, check with `mvn dependency:tree` that the DGS BOM's graphql-java
 wins over anything the old library pulls in.
 
@@ -319,7 +320,39 @@ If your clients parse your current error payloads, diff a few known failure resp
 old-vs-new early; error shape is the most common silent incompatibility in GraphQL
 migrations.
 
-## 10. Verifying the port
+## 10. Step 7 — the playground UI
+
+If your framework also served an in-browser playground/console, that is replaced too —
+and both of its URLs stay under your control, so nothing your users bookmarked or
+integrated needs to change. The `graphql-playground` module is standalone,
+domain-agnostic and fully self-hosted (no CDN access needed, works offline). Wiring is
+one dependency:
+
+```xml
+<dependency>
+    <groupId>com.example</groupId>
+    <artifactId>graphql-playground</artifactId>
+</dependency>
+```
+
+All knobs are properties, no code:
+
+| Property | Default | Purpose |
+|---|---|---|
+| `graphql.playground.path` | `/playground` | The URL the page is served at — set it to your old framework's playground URL to preserve bookmarks and links |
+| `graphql.playground.endpoint` | `/graphql` | The GraphQL endpoint the page sends queries to |
+| `graphql.playground.enabled` | `true` | Kill switch, e.g. `false` in a production profile |
+
+If your old service exposed the **API itself** under something other than `/graphql`,
+that is DGS's knob: set `dgs.graphql.path` and point `graphql.playground.endpoint` at
+the same value.
+
+Separately, DGS serves its own GraphiQL at `/graphiql` by default. It loads its assets
+from a CDN, so in offline or locked-down environments it renders a blank page — the
+self-hosted playground is the dependable one. Keep GraphiQL alongside it or turn it
+off with `dgs.graphql.graphiql.enabled=false`.
+
+## 11. Verifying the port
 
 1. **Schema diff**: print the new schema (same `SchemaPrinter` snippet — or hit
    introspection) and diff against `printed-schema.graphqls` from §3. Only intended
@@ -336,11 +369,11 @@ Behavioral gotchas to check deliberately:
 |---|---|
 | Derived field names | `getFoo()`→`foo`, custom `@GraphQLName`s, generated input-type names — trust only the printed SDL |
 | Null fields in responses | The GraphQL spec requires requested fields with `null` values to appear explicitly. If your old framework stripped them, this stack reproduces that with `graphql.response.omit-null-fields=true` (`NullFieldOmittingInstrumentation`) — off by default |
-| Relay connections | If you used `@GraphQLConnection`, there is no counterpart here; the demo's list/filter/replication queries (§11) are the offered alternative, or model the connection types explicitly in SDL |
+| Relay connections | If you used `@GraphQLConnection`, there is no counterpart here; the demo's list/filter/replication queries (§12) are the offered alternative, or model the connection types explicitly in SDL |
 | graphql-java version jump | Your old stack likely bundles an older graphql-java; DGS 4.9.x brings 17.x. Validation/coercion messages and some edge-case behavior (e.g. stricter Int overflow rules) differ — golden-query diffs catch this |
 | Batching/N+1 | If your in-house framework had a dataloader story, DGS has first-class `@DgsDataLoader` support you can adopt where needed |
 
-## 11. What you get beyond parity (adopt later, optional)
+## 12. What you get beyond parity (adopt later, optional)
 
 The port above reaches feature parity. These framework capabilities are then available
 per domain, opt-in, without touching the infrastructure — each is one schema block plus
@@ -357,7 +390,7 @@ complete minimal wiring, `docs/EXTENDING.md` for recipes):
   fetchers too.
 - **Cross-service references / federation readiness** (`docs/FEDERATION.md`).
 
-## 12. Suggested order of work
+## 13. Suggested order of work
 
 1. Print + freeze the old schema (§3). Split into `.graphqls` files.
 2. New module, dependencies in / old framework out (§4).
@@ -366,10 +399,12 @@ complete minimal wiring, `docs/EXTENDING.md` for recipes):
 4. Wire **all** operations via `DataFetcherAdapters` (§5.1) — mechanical, an hour or
    two even for a large API, and the boot-time coordinate check immediately flags any
    name you got wrong.
-5. Run the golden-query + schema diffs (§10). Fix until clean. **You are now
+5. Add the `graphql-playground` dependency and pin `graphql.playground.path` (and, if
+   needed, `dgs.graphql.path`) to your old framework's URLs (§10).
+6. Run the golden-query + schema diffs (§11). Fix until clean. **You are now
    migrated.**
-6. At leisure: convert adapted fetchers to first-class resolvers (§5.2), move
+7. At leisure: convert adapted fetchers to first-class resolvers (§5.2), move
    presentation to `@GraphQLModel` annotations (§7), adopt filtering/replication/
-   standard mutations where they replace bespoke code (§11).
-7. Final cleanup: strip the now-inert graphql-java-annotations annotations from your
+   standard mutations where they replace bespoke code (§12).
+8. Final cleanup: strip the now-inert graphql-java-annotations annotations from your
    entity/DTO sources, then drop the library from the build entirely (§4).
