@@ -34,6 +34,31 @@ it. Everything else in the migration follows from this inversion:
 | Nullability from `@GraphQLNonNull` | Nullability from `!` in SDL |
 | Docs from `@GraphQLDescription` | Docs from SDL docstrings (`"..."`) |
 
+The two stacks side by side — note that everything below the GraphQL layer survives
+unchanged, including your fetcher classes if you take the adapter route (§5.1):
+
+```mermaid
+flowchart TB
+    subgraph OLD["BEFORE - code-first, your EOL framework"]
+        direction TB
+        C1["Client"] --> CT["Hand-rolled controller<br/>POST /graphql"]
+        CT --> EX["GraphQL.execute against a schema<br/>generated at boot from annotations"]
+        EX --> QD["Query / Mutation registry classes<br/>@GraphQLField + @GraphQLDataFetcher"]
+        QD --> F1["Your DataFetcher classes"]
+    end
+    subgraph NEW["AFTER - schema-first, DGS + this framework"]
+        direction TB
+        C2["Client"] --> DGS["DGS starter<br/>POST /graphql - path via dgs.graphql.path"]
+        DGS --> DC["GraphQLDispatchController<br/>logging + JSON-schema validation"]
+        SDL["schema/*.graphqls<br/>printed from the old schema"] -. "coordinates verified at boot" .-> DC
+        DC --> RB["GraphQLResolver beans, or<br/>DataFetcherAdapters wrapping..."]
+        RB --> F2["...your DataFetcher classes, unchanged"]
+    end
+    F1 --> SVC["Your services, DAL, entities, connectivity - UNTOUCHED"]
+    F2 --> SVC
+    OLD ~~~ NEW
+```
+
 The practical consequence: **your first migration artifact is the SDL of your existing
 service, printed from the running schema** (§3). It becomes the contract that
 guarantees the new service is a drop-in replacement.
@@ -352,6 +377,17 @@ from a CDN, so in offline or locked-down environments it renders a blank page �
 self-hosted playground is the dependable one. Keep GraphiQL alongside it or turn it
 off with `dgs.graphql.graphiql.enabled=false`.
 
+This is what your users get: the sidebar is built live from the schema (every
+operation you wired shows up automatically — a quick visual check that nothing got
+lost in the port), and the response below runs one of the demo's ported operations,
+including the enum enrichment and temporal formatting presentation features:
+
+![the self-hosted playground running a ported personById query](images/migration-playground-personbyid.png)
+
+For a screenshot-guided tour of the playground against the framework's standard
+queries (filtering, counting, the replication feed), see
+[API-WALKTHROUGH.md](API-WALKTHROUGH.md).
+
 ## 11. Verifying the port
 
 1. **Schema diff**: print the new schema (same `SchemaPrinter` snippet — or hit
@@ -391,6 +427,26 @@ complete minimal wiring, `docs/EXTENDING.md` for recipes):
 - **Cross-service references / federation readiness** (`docs/FEDERATION.md`).
 
 ## 13. Suggested order of work
+
+```mermaid
+flowchart LR
+    subgraph PREP["Prepare"]
+        direction TB
+        S1["1. Print the old schema"] --> S2["2. Split into .graphqls files,<br/>drop duplicate scalar declarations"]
+    end
+    subgraph PORT["Port"]
+        direction TB
+        S3["3. New module: infrastructure in,<br/>old framework out"] --> S4["4. Wire every operation via<br/>DataFetcherAdapters"] --> S5["5. Playground on your<br/>old URLs"]
+    end
+    subgraph VER["Verify"]
+        S6["6. Schema diff +<br/>golden queries +<br/>failure parity"]
+    end
+    subgraph CLEAN["Clean up - at leisure"]
+        direction TB
+        S7["7. First-class resolvers,<br/>framework features"] --> S8["8. Strip annotations,<br/>drop the old library"]
+    end
+    PREP --> PORT --> VER --> CLEAN
+```
 
 1. Print + freeze the old schema (§3). Split into `.graphqls` files.
 2. New module, dependencies in / old framework out (§4).
