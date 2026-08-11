@@ -337,7 +337,8 @@ GraphQL/DGS types; only the handler knows how to render them.
 
 GraphQL's type system can't express value ranges, string patterns, array sizes or
 formats — so every mutation input is also validated server-side against a JSON Schema
-(draft-07, via `com.networknt:json-schema-validator`).
+(draft-07, via the Everit engine — `com.github.erosb:everit-json-schema` — behind the
+library-style `GenericSchemaValidator` component).
 
 - Domain modules drop schemas under `classpath:json-schema/<name>.json`
   (`person-service` ships `person-create.json`: `heightCm` 50–260, `weightKg` 2–500,
