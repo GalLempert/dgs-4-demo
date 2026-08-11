@@ -53,8 +53,6 @@ dgs-demo (parent pom, dependency management, version conflict resolution)
 │       │                      ReplicationResolverFactory, ReplicationSequences,
 │       │                      ReplicationPage
 │       └── support            UniqueIndex (fail-fast strategy registries)
-├── graphql-playground         <- domain-agnostic, reusable
-│   └── com.example.playground Self-hosted playground UI at /playground (no CDN)
 ├── perf-tests                 <- k6 black-box performance scenarios (see its README)
 ├── company-service            <- second, deliberately minimal STANDALONE service (:8081,
 │   └── com.example.company    own H2/schema/API): shows how much a service inherits
@@ -131,7 +129,7 @@ mvn package          # build + run integration tests
 java -jar person-service/target/person-service-1.0.0-SNAPSHOT.jar
 ```
 
-- **Playground UI: http://localhost:8080/playground** (self-hosted, works offline)
+- **Playground UI: http://localhost:8080/playground** (assets served from the jar, works offline)
 - GraphiQL UI: http://localhost:8080/graphiql (bundled with DGS, loads assets from CDN)
 - GraphQL endpoint: `POST http://localhost:8080/graphql`
 - H2 console: http://localhost:8080/h2-console (JDBC URL `jdbc:h2:mem:persondb`, user `sa`)
@@ -143,20 +141,23 @@ box. However, that page is only a thin HTML shell that loads all of its JavaScri
 from the unpkg CDN — on a machine without internet access (or behind a strict proxy)
 it renders as a blank page.
 
-The **`graphql-playground` module** therefore provides a fully self-hosted playground
-at **`/playground`**: a single self-contained HTML page served by the app itself, no
-external requests. It introspects whatever schema the application exposes (so it is
-domain-agnostic and reusable), lists every query/mutation in a sidebar, and clicking
-one inserts a ready-to-run operation with placeholder arguments and a full selection
-set. Run with the button or Ctrl+Enter; a variables pane accepts JSON.
+The infrastructure module therefore also pulls in the off-the-shelf
+[`playground-spring-boot-starter`](https://github.com/graphql-java-kickstart/graphql-spring-boot)
+(graphql-java-kickstart), which serves the standard **GraphQL Playground** UI at
+**`/playground`**. By default the starter serves all of its JavaScript/CSS from inside
+its own jar (`graphql.playground.cdn.enabled=false`), so unlike GraphiQL it works
+offline and behind strict proxies — and there is no UI code to maintain in this repo.
+It introspects whatever schema the application exposes, so every service built on the
+infrastructure gets it for free.
 
 Configuration (all optional):
 
-| Property                       | Default       | Purpose                          |
-|--------------------------------|---------------|----------------------------------|
-| `graphql.playground.enabled`   | `true`        | Set `false` to disable the page  |
-| `graphql.playground.path`      | `/playground` | Where the UI is served           |
-| `graphql.playground.endpoint`  | `/graphql`    | GraphQL endpoint the UI targets  |
+| Property                          | Default       | Purpose                          |
+|-----------------------------------|---------------|----------------------------------|
+| `graphql.playground.enabled`      | `true`        | Set `false` to disable the page  |
+| `graphql.playground.mapping`      | `/playground` | Where the UI is served           |
+| `graphql.playground.endpoint`     | `/graphql`    | GraphQL endpoint the UI targets  |
+| `graphql.playground.cdn.enabled`  | `false`       | Keep `false` for offline use     |
 
 Three demo persons are seeded at startup. Example query:
 

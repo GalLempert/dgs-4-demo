@@ -1,7 +1,9 @@
 # API walkthrough — the four standard queries in the playground
 
-A guided tour of the API using the self-hosted playground, with real screenshots from
-running instances. Each domain is its **own standalone GraphQL service** on the shared
+A guided tour of the API using the playground, with real screenshots from running
+instances. (The screenshots show the previous self-hosted playground UI; the service
+now serves the standard GraphQL Playground at the same URL — the queries and
+responses are identical.) Each domain is its **own standalone GraphQL service** on the shared
 framework, and every resource exposes the same four queries (filtered list,
 replication feed, count-by-filter, max sequence — see
 [REPLICATION.md](REPLICATION.md) for the protocol), so everything shown here against
@@ -15,9 +17,9 @@ java -jar person-service/target/person-service-1.0.0-SNAPSHOT.jar    # :8080
 java -jar company-service/target/company-service-1.0.0-SNAPSHOT.jar  # :8081 (optional, for section 5)
 ```
 
-Open **http://localhost:8080/playground**. The sidebar lists every query and mutation
-of *this* service's schema (each service has its own playground showing only its own
-API). Click an operation to get a template, or paste the queries below. The person
+Open **http://localhost:8080/playground**. The schema/docs tabs list every query and
+mutation of *this* service's schema (each service has its own playground showing only
+its own API). Paste the queries below to follow along. The person
 service seeds Ada Lovelace, Alan Turing and Grace Hopper (sequences 1–3) at startup;
 the company service seeds Initech, Globex and Hooli.
 
@@ -162,7 +164,7 @@ locally.
 ## 5. Same queries, separate service
 
 **http://localhost:8081/playground** is a different service entirely: own process,
-own database, own schema — its sidebar shows only company operations. Yet the API
+own database, own schema — its playground shows only company operations. Yet the API
 surface is identical, because the company module wrote no resolver, DAL or service
 code for its four standard queries; they're inherited from the framework, running on
 an independent per-table sequence.

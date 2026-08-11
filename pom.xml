@@ -25,7 +25,6 @@
 
     <modules>
         <module>graphql-infrastructure</module>
-        <module>graphql-playground</module>
         <module>company-service</module>
         <module>person-service</module>
     </modules>
@@ -66,10 +65,13 @@
                 <artifactId>graphql-infrastructure</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <!-- Off-the-shelf GraphQL Playground UI at /playground. Assets are bundled in
+                 the jar (no CDN by default), so it still works offline. Kickstart 11.x is
+                 the line built for Spring Boot 2.x. -->
             <dependency>
-                <groupId>com.example</groupId>
-                <artifactId>graphql-playground</artifactId>
-                <version>${project.version}</version>
+                <groupId>com.graphql-java-kickstart</groupId>
+                <artifactId>playground-spring-boot-starter</artifactId>
+                <version>11.1.0</version>
             </dependency>
             <dependency>
                 <groupId>com.example</groupId>

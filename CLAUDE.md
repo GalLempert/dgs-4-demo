@@ -17,7 +17,7 @@ mvn test -pl person-service -am -Dtest=PersonCalculationsTest#ageIsWholeYearsSin
 java -jar person-service/target/person-service-1.0.0-SNAPSHOT.jar            # run the app
 ```
 
-- Playground UI: http://localhost:8080/playground (self-hosted, offline); GraphiQL at /graphiql (needs CDN access); endpoint `POST /graphql`; H2 console at /h2-console (JDBC URL `jdbc:h2:mem:persondb`, user `sa`).
+- Playground UI: http://localhost:8080/playground (kickstart `playground-spring-boot-starter`, assets bundled in the jar so it works offline); GraphiQL at /graphiql (needs CDN access); endpoint `POST /graphql`; H2 console at /h2-console (JDBC URL `jdbc:h2:mem:persondb`, user `sa`).
 - Sources target **Java 11** (`java.version=11` in the parent POM). The stack predates recent JDKs; JDK 11 is the supported toolchain, though it happens to build on newer ones.
 - Performance tests (`perf-tests/k6/`) are k6 scripts deliberately outside the Maven lifecycle — see `perf-tests/README.md`. Run the service with `--spring.profiles.active=perf` during load tests so DEBUG logging doesn't skew latency.
 
@@ -28,7 +28,6 @@ Detailed docs exist and should be consulted before structural changes: `docs/ARC
 ### Module split (the core invariant)
 
 - `graphql-infrastructure` — domain-agnostic library. **Must compile and make sense with zero knowledge of any domain.** Ships contracts (`GraphQLResolver`, `FilterPredicateStrategy`, `EnumCatalog`, `ExceptionMapper`), machinery (dispatch, JSON-schema validation, filtering, declarative mapping, error rendering), and shared schema `schema/common.graphqls` (DGS merges every `schema/*.graphqls` on the classpath, including inside jars).
-- `graphql-playground` — domain-agnostic self-hosted playground UI.
 - `company-service` — second, deliberately minimal standalone service proving the reuse: its four standard queries (filtered list, replication feed, count, max sequence) AND all standard mutations are entirely inherited — `CompanyRepository`/`CompanyDal` are near-empty subclasses (only the name-uniqueness lookup), `CompanyService` only supplies entity→view mapping plus the `naturalKeyOf`/`validate` hooks (name is the unique natural key), and `CompanyGraphQLConfig` registers factory-made resolver beans (no resolver classes at all). Runs on :8081 with its own H2 (`companydb`) and declares its own base `Query`/`Mutation` types. Demonstrates cross-service references: `Company.employees` returns id-only `Person` stubs (`PersonRef extends ResourceRef`; persons are owned by person-service and never duplicated).
 - `person-service` — the Person service (:8080, H2 `persondb`): entities, DTOs, `PersonService`, thin resolvers, seed data. The two services are completely independent at runtime — same framework, separate schemas/APIs/databases. A new domain is added as another standalone service module: copy the company-service shape; nothing in the infrastructure changes.
 - **Cross-service references (federation preparation)**: infrastructure `reference` package — `ResourceRef` is an id-only view base; a referencing service declares a one-line subclass + a key-only schema stub named after the real type (see `docs/FEDERATION.md`). Only keys cross service boundaries; actual federation (`@key`/`@extends`, entity fetchers, gateway) is a planned later PR.
