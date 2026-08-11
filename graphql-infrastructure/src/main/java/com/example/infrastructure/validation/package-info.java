@@ -1,7 +1,9 @@
 /**
  * Server-side JSON Schema validation - constraints the GraphQL type system cannot
  * express (value ranges, patterns, array sizes, formats). Schemas live under
- * {@code classpath:json-schema/<name>.json}; violations surface as
+ * {@code classpath:json-schema/<name>.json}; the engine is the validation library's
+ * {@link com.example.infrastructure.validation.GenericSchemaValidator} (Everit-backed);
+ * violations surface as
  * {@link com.example.infrastructure.validation.SchemaValidationException} with one
  * detail per broken constraint.
  */

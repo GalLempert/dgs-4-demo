@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 class JsonSchemaValidationServiceTest {
 
     private final JsonSchemaValidationService service = new JsonSchemaValidationService(
-            new ObjectMapper(), new PathMatchingResourcePatternResolver());
+            new GenericSchemaValidator(new ObjectMapper()), new PathMatchingResourcePatternResolver());
 
     private Map<String, Object> payload(String name, Object score) {
         Map<String, Object> payload = new LinkedHashMap<>();

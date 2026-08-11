@@ -63,10 +63,11 @@ negligible regardless of version.
 
 ### Side upgrade worth taking along
 
-`com.networknt:json-schema-validator` 1.0.52 → 1.5.x gained significant validation
-performance over the years (caching, fewer allocations). It's independent of the
-framework milestones and touches the hot path of every mutation — cheap win during
-any of the steps above.
+The JSON Schema engine (Everit, `com.github.erosb:everit-json-schema`) sits behind
+`GenericSchemaValidator` on the hot path of every mutation. Newer engine releases are
+independent of the framework milestones, so an engine bump is a cheap win to take
+along during any of the steps above; `GenericSchemaValidator` already caches compiled
+schemas, keeping per-request cost to validation only.
 
 ## Summary: recommended order vs. expected payoff
 
