@@ -25,9 +25,11 @@ public class GraphQLResolverRegistry {
             String coordinate = resolver.parentType() + "." + resolver.fieldName();
             GraphQLResolver previous = byCoordinate.putIfAbsent(coordinate, resolver);
             if (previous != null) {
+                // description() over getClass(): every GraphQLResolvers adapter is the
+                // same anonymous class, so class names cannot tell the claimants apart
                 throw new IllegalStateException(String.format(
                         "Two GraphQL resolvers claim the coordinate '%s': %s and %s",
-                        coordinate, previous.getClass().getName(), resolver.getClass().getName()));
+                        coordinate, previous.description(), resolver.description()));
             }
         }
         this.resolversByCoordinate = byCoordinate;

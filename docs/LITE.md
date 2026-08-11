@@ -104,7 +104,7 @@ precisely because it refuses them:
 
 | Concern | Lite behavior | Full version |
 |---|---|---|
-| Error rendering | DGS default handler: generic `INTERNAL` error, nothing leaks | `GraphQLExceptionHandler` + `ApiException`/`ErrorCode` (`graphql-infrastructure`) |
+| Error rendering | DGS default handler: `INTERNAL` error whose message **includes the exception class and message** — register a DGS `DataFetcherExceptionHandler` bean if internals must not reach clients | `GraphQLExceptionHandler` + `ApiException`/`ErrorCode` (`graphql-infrastructure`) |
 | Input validation | GraphQL type system only (non-null, enums) | JSON-schema validation in the dispatch controller (`docs/ARCHITECTURE.md`) |
 | Filtering | Write your own arguments per query | `FilterCriteria` + predicate strategy beans (`docs/FILTERING.md`) |
 | Replication / soft deletes | — | `docs/REPLICATION.md` |
