@@ -1,0 +1,15 @@
+# Lite person service: no database, no JPA - only the GraphQL endpoint.
+server:
+  port: 8082
+
+spring:
+  application:
+    name: person-service-lite
+
+# DEBUG shows the dispatch flow (received operation -> resolver -> service -> DAL);
+# switch to INFO to keep only the per-operation log lines.
+logging:
+  level:
+    com.example: DEBUG
+
+# DGS serves GraphQL at /graphql and GraphiQL at /graphiql by default

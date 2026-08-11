@@ -27,6 +27,12 @@
         <module>graphql-infrastructure</module>
         <module>company-service</module>
         <module>person-service</module>
+        <!-- The "lite" track: a minimal, self-contained alternative to
+             graphql-infrastructure plus two tiny services proving its reuse.
+             Entirely independent of the full framework - see docs/LITE.md. -->
+        <module>graphql-infrastructure-lite</module>
+        <module>person-service-lite</module>
+        <module>company-service-lite</module>
     </modules>
 
     <properties>
@@ -63,6 +69,11 @@
             <dependency>
                 <groupId>com.example</groupId>
                 <artifactId>graphql-infrastructure</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.example</groupId>
+                <artifactId>graphql-infrastructure-lite</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <!-- Off-the-shelf GraphQL Playground UI at /playground. Assets are bundled in

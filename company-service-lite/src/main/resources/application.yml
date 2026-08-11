@@ -1,0 +1,13 @@
+# Lite company service: no database, no JPA - only the GraphQL endpoint.
+server:
+  port: 8083
+
+spring:
+  application:
+    name: company-service-lite
+
+logging:
+  level:
+    com.example: DEBUG
+
+# DGS serves GraphQL at /graphql and GraphiQL at /graphiql by default

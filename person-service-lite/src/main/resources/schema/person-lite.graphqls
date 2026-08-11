@@ -1,0 +1,33 @@
+# The whole API of the lite person service. Schema-first: this file is the single
+# source of truth; every resolver bean is verified against it at startup.
+# In a migration, this file is printed once from the running legacy schema
+# (introspection / SchemaPrinter) instead of being written by hand.
+
+type Query {
+    personById(id: ID!): Person
+    allPersons: [Person!]!
+    personsByCity(city: String!): [Person!]!
+    personCount: Int!
+}
+
+type Mutation {
+    createPerson(input: CreatePersonInput!): Person!
+    deletePerson(id: ID!): Boolean!
+}
+
+type Person {
+    id: ID!
+    firstName: String!
+    lastName: String!
+    "Computed by a field resolver, not stored"
+    fullName: String!
+    email: String!
+    city: String
+}
+
+input CreatePersonInput {
+    firstName: String!
+    lastName: String!
+    email: String!
+    city: String
+}
