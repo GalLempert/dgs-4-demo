@@ -120,8 +120,9 @@ The `company-service` module IS this recipe, executed — copy it. Each domain i
 own standalone GraphQL service (own port, database, schema, API) built on the shared
 framework. In short:
 
-1. New Maven module depending on `graphql-infrastructure` (+ `graphql-playground`,
-   web, JPA, H2), with its own `@SpringBootApplication` class (scanning
+1. New Maven module depending on `graphql-infrastructure` (+ web, JPA, H2; the
+   playground UI comes with the infrastructure), with its own
+   `@SpringBootApplication` class (scanning
    `com.example`, plus `@EntityScan`/`@EnableJpaRepositories` the same way) and its
    own `application.yml` (own port and database name).
 2. `schema/company.graphqls` — types, queries, mutations, `CompanyFilter` composed

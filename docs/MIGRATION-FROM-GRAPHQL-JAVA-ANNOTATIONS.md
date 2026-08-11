@@ -83,7 +83,7 @@ guarantees the new service is a drop-in replacement.
 | Method-parameter argument injection (`@GraphQLName("id") long id`) | `DataFetchingEnvironment.getArgument("id")`, with `GraphQLArgumentMapper` for typed/DTO conversion (§6) |
 | In-house error handling in the controller | `GraphQLExceptionHandler` global boundary: throw `ApiException` subclasses with an `ErrorCode`, or add an `ExceptionMapper` bean per third-party exception type (`docs/EXTENDING.md`) |
 | In-house request/response tweaks (interceptors) | graphql-java `Instrumentation` beans — DGS discovers and chains them (example: `NullFieldOmittingInstrumentation`) |
-| In-house playground/console UI | `graphql-playground` module — self-hosted, no CDN; URL, endpoint and on/off are properties (§10) |
+| In-house playground/console UI | GraphQL Playground via kickstart `playground-spring-boot-starter` (comes with `graphql-infrastructure`) — assets served from the jar, no CDN; URL, endpoint and on/off are properties (§10) |
 
 One thing that does **not** change: `DataFetchingEnvironment`. Your in-house framework
 sits on graphql-java, and so does DGS. The environment object your fetchers already
@@ -349,24 +349,20 @@ migrations.
 
 If your framework also served an in-browser playground/console, that is replaced too —
 and both of its URLs stay under your control, so nothing your users bookmarked or
-integrated needs to change. The `graphql-playground` module is standalone,
-domain-agnostic and fully self-hosted (no CDN access needed, works offline). Wiring is
-one dependency:
-
-```xml
-<dependency>
-    <groupId>com.example</groupId>
-    <artifactId>graphql-playground</artifactId>
-</dependency>
-```
+integrated needs to change. `graphql-infrastructure` pulls in the standard GraphQL
+Playground UI (graphql-java-kickstart's `playground-spring-boot-starter`); with the
+starter's CDN mode off (the default) all assets are served from the starter's own jar,
+so it needs no CDN access and works offline. There is nothing to wire — it arrives
+with the infrastructure dependency you already added in §4.
 
 All knobs are properties, no code:
 
 | Property | Default | Purpose |
 |---|---|---|
-| `graphql.playground.path` | `/playground` | The URL the page is served at — set it to your old framework's playground URL to preserve bookmarks and links |
+| `graphql.playground.mapping` | `/playground` | The URL the page is served at — set it to your old framework's playground URL to preserve bookmarks and links |
 | `graphql.playground.endpoint` | `/graphql` | The GraphQL endpoint the page sends queries to |
 | `graphql.playground.enabled` | `true` | Kill switch, e.g. `false` in a production profile |
+| `graphql.playground.cdn.enabled` | `false` | Keep `false` for offline/locked-down environments |
 
 If your old service exposed the **API itself** under something other than `/graphql`,
 that is DGS's knob: set `dgs.graphql.path` and point `graphql.playground.endpoint` at
@@ -374,15 +370,17 @@ the same value.
 
 Separately, DGS serves its own GraphiQL at `/graphiql` by default. It loads its assets
 from a CDN, so in offline or locked-down environments it renders a blank page — the
-self-hosted playground is the dependable one. Keep GraphiQL alongside it or turn it
+jar-served playground is the dependable one. Keep GraphiQL alongside it or turn it
 off with `dgs.graphql.graphiql.enabled=false`.
 
-This is what your users get: the sidebar is built live from the schema (every
-operation you wired shows up automatically — a quick visual check that nothing got
-lost in the port), and the response below runs one of the demo's ported operations,
-including the enum enrichment and temporal formatting presentation features:
+This is what your users get: the schema/docs tabs are built live from introspection
+(every operation you wired shows up automatically — a quick visual check that nothing
+got lost in the port), and running one of the demo's ported operations exercises the
+enum enrichment and temporal formatting presentation features. (The screenshot below
+predates the switch to the kickstart Playground starter and shows the previous
+self-hosted UI — the query and response are identical.)
 
-![the self-hosted playground running a ported personById query](images/migration-playground-personbyid.png)
+![a ported personById query in the playground](images/migration-playground-personbyid.png)
 
 For a screenshot-guided tour of the playground against the framework's standard
 queries (filtering, counting, the replication feed), see
@@ -455,8 +453,8 @@ flowchart LR
 4. Wire **all** operations via `DataFetcherAdapters` (§5.1) — mechanical, an hour or
    two even for a large API, and the boot-time coordinate check immediately flags any
    name you got wrong.
-5. Add the `graphql-playground` dependency and pin `graphql.playground.path` (and, if
-   needed, `dgs.graphql.path`) to your old framework's URLs (§10).
+5. Pin `graphql.playground.mapping` (and, if needed, `dgs.graphql.path`) to your old
+   framework's URLs (§10) — the playground itself ships with the infrastructure.
 6. Run the golden-query + schema diffs (§11). Fix until clean. **You are now
    migrated.**
 7. At leisure: convert adapted fetchers to first-class resolvers (§5.2), move

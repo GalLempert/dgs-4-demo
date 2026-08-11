@@ -13,7 +13,8 @@ field / predicate / domain?") see [EXTENDING.md](EXTENDING.md).
 dgs-demo (parent POM: dependency management, version-conflict resolution)
 │
 ├── graphql-infrastructure      domain-agnostic framework. Knows NOTHING about Person.
-├── graphql-playground          domain-agnostic self-hosted playground UI (/playground)
+│                               also pulls in the GraphQL Playground UI (/playground,
+│                               kickstart starter, assets served from its jar)
 ├── company-service             second, minimal STANDALONE service (:8081): proves the
 │                               reuse (its standard queries are entirely inherited) and
 │                               demonstrates cross-service references (docs/FEDERATION.md)
@@ -218,9 +219,10 @@ identities.
 |---|---|---|
 | `graphql.query.max-results` | `100` | result cap for non-paginated list queries (COUNT-first) |
 | `graphql.response.omit-null-fields` | `false` | when `true`, null-valued fields are dropped from response JSON entirely (key and value) instead of the spec-mandated explicit `null` |
-| `graphql.playground.enabled` | `true` | serve the self-hosted playground |
-| `graphql.playground.path` | `/playground` | playground URL |
+| `graphql.playground.enabled` | `true` | serve the GraphQL Playground UI (kickstart starter) |
+| `graphql.playground.mapping` | `/playground` | playground URL |
 | `graphql.playground.endpoint` | `/graphql` | endpoint the playground targets |
+| `graphql.playground.cdn.enabled` | `false` | keep `false` so assets come from the jar (offline-safe) |
 | `logging.level.com.example` | `DEBUG` (demo) | `INFO` for business events only |
 | Spring profile `perf` | off | INFO logging for load testing (`--spring.profiles.active=perf`) |
 

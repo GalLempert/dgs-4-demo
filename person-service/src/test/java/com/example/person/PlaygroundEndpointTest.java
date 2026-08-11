@@ -11,8 +11,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The self-hosted playground (graphql-playground module) must be served at /playground
- * and be fully self-contained: no external (CDN) scripts or stylesheets.
+ * The GraphQL Playground UI (playground-spring-boot-starter, pulled in by
+ * graphql-infrastructure) must be served at /playground and stay self-hosted:
+ * with the starter's CDN mode off (the default) all assets load from the jar
+ * under /vendor/playground, so the page works offline.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -34,8 +36,15 @@ class PlaygroundEndpointTest {
         String body = mockMvc.perform(get("/playground"))
                 .andReturn().getResponse().getContentAsString();
         org.assertj.core.api.Assertions.assertThat(body)
+                .contains("/vendor/playground")   // assets bundled in the starter jar
                 .doesNotContain("http://unpkg.com")
                 .doesNotContain("https://unpkg.com")
                 .doesNotContain("cdn.");
+    }
+
+    @Test
+    void playgroundStaticAssetsAreServedLocally() throws Exception {
+        mockMvc.perform(get("/vendor/playground/static/js/middleware.js"))
+                .andExpect(status().isOk());
     }
 }
