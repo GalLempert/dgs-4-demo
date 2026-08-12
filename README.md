@@ -17,6 +17,7 @@ A demo GraphQL service built with **Netflix DGS 4.9.x** / **graphql-java 17** on
 | [docs/DAL-ALTERNATIVES.md](docs/DAL-ALTERNATIVES.md) | Data-access alternatives compared — including staying on Hibernate 6+ — with a revised recommendation |
 | [docs/UPGRADE-PERFORMANCE.md](docs/UPGRADE-PERFORMANCE.md) | Expected performance impact of Java / Spring Boot / DGS upgrade milestones |
 | [docs/MIGRATION-FROM-GRAPHQL-JAVA-ANNOTATIONS.md](docs/MIGRATION-FROM-GRAPHQL-JAVA-ANNOTATIONS.md) | Migrating an existing code-first graphql-java-annotations service onto this framework: concept map, schema printing, the `DataFetcherAdapters` bridge, verification strategy |
+| [docs/LITE.md](docs/LITE.md) | The lite track: `graphql-infrastructure-lite` + two demo services — a bare-minimum DGS replacement for an in-house GraphQL layer (schema load, `/graphql`, dispatch to existing resolvers), with every omission mapped to its full-track version |
 | [perf-tests/README.md](perf-tests/README.md) | k6 performance suite: rationale, scenarios, how to run, measured baseline |
 
 ## Module layout — infrastructure vs. domain
@@ -85,6 +86,21 @@ entirely inherited from the infrastructure, and its `employees` field shows the
 federation-ready way to reference resources owned by another service
 ([docs/FEDERATION.md](docs/FEDERATION.md)). Full recipe:
 [docs/EXTENDING.md](docs/EXTENDING.md#add-a-whole-new-domain-eg-company).
+
+Beside the full framework lives the **lite track** ([docs/LITE.md](docs/LITE.md)) —
+the same infrastructure/consumer split reduced to the essentials for replacing an
+in-house graphql-java-annotations wrapper, sharing no code with the modules above:
+
+```
+├── graphql-infrastructure-lite  <- bare-minimum reusable infrastructure: resolver
+│   └── com.example.lite.graphql    contract, DataFetcher adapters, fail-fast registry,
+│                                   dispatch controller - four classes, nothing else
+├── person-service-lite          <- lite consumer #1 (:8082): models a migrating service,
+│   └── com.example.lite.person     legacy fetcher classes reused unchanged over an
+│                                   in-memory service + DAL
+└── company-service-lite         <- lite consumer #2 (:8083): the end state - every
+    └── com.example.lite.company    operation a lambda, zero infrastructure code
+```
 
 ## The 3 layers
 

@@ -1,0 +1,17 @@
+# The whole API of the lite company service - its own schema, own process, own port,
+# sharing only the graphql-infrastructure-lite module with person-service-lite.
+
+type Query {
+    allCompanies: [Company!]!
+    companyById(id: ID!): Company
+}
+
+type Mutation {
+    createCompany(name: String!, industry: String): Company!
+}
+
+type Company {
+    id: ID!
+    name: String!
+    industry: String
+}
