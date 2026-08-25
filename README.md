@@ -11,6 +11,7 @@ A demo GraphQL service built with **Netflix DGS 4.9.x** / **graphql-java 17** on
 | [docs/EXTENDING.md](docs/EXTENDING.md) | Cookbook: add a field / constraint / calculated value / custom presentation / query / filter predicate / error code / whole domain |
 | [docs/FILTERING.md](docs/FILTERING.md) | Conceptual guide to filtering: predicate shapes, AND behavior, variables, result caps, and illustrative examples |
 | [docs/REPLICATION.md](docs/REPLICATION.md) | The sequence-based replication feed: `personsBySequence` paging, soft deletes, filtered replication with `filteredOutIds`, smart next-sequence |
+| [docs/REPLICATION-FILTERING.md](docs/REPLICATION-FILTERING.md) | How dynamic filtering works inside the replication feed: page-by-sequence + id re-check + partition, why `filteredOutIds` makes filtered replication correct with a stateless server, filter-stability caveats |
 | [docs/API-WALKTHROUGH.md](docs/API-WALKTHROUGH.md) | Screenshot-guided tour of the four standard queries in the playground, including a complete replication polling session (import → resume → caught up) |
 | [docs/FEDERATION.md](docs/FEDERATION.md) | Separate services on one framework: cross-service id-only references (`Company.employees` → `Person` stubs) and the later-PR federation plan |
 | [docs/FILTER-COMPOSITION.md](docs/FILTER-COMPOSITION.md) | Agreed design for explicit `and`/`or`/`not` filter composition (not yet implemented) |

@@ -195,6 +195,11 @@ filter inputs. Its planned design is described in
 [Filter composition](FILTER-COMPOSITION.md), but those fields must not be sent to the
 API until they are added to the schema.
 
+The same filter input is also accepted by the resource's replication feed
+(`…BySequence`), where it selects the subset a client replicates; the feed-specific
+semantics (partitioning, `filteredOutIds`, filter stability across polls) are
+described in [Dynamic filtering in replication](REPLICATION-FILTERING.md).
+
 ## Use variables for dynamic filters
 
 Variables keep filter values separate from the operation text, making an operation

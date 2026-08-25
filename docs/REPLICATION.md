@@ -3,7 +3,9 @@
 How clients import the whole person table and stay in sync by polling, with optional
 filtering, without the server keeping any per-client state. For a screenshot-guided
 tour of a full polling session against a running instance, see
-[API-WALKTHROUGH.md](API-WALKTHROUGH.md).
+[API-WALKTHROUGH.md](API-WALKTHROUGH.md); for how the feed's dynamic filter is
+evaluated and why filtered replication is correct, see
+[REPLICATION-FILTERING.md](REPLICATION-FILTERING.md).
 
 ## The model
 
@@ -65,7 +67,9 @@ type PersonReplicationPage {
   the page is reported in `filteredOutIds` — the client can't know whether that row
   used to match (it may have just "left" the filter, e.g. a person who moved city), so
   it must drop its local copy. This is what makes filtered replication correct without
-  the server tracking what each client has.
+  the server tracking what each client has — the full mechanism (page by sequence,
+  re-check ids against the filter, partition) is spelled out in
+  [REPLICATION-FILTERING.md](REPLICATION-FILTERING.md).
 - `bulkSize` must be ≥ 1 (`INVALID_ARGUMENT`) and within `graphql.query.max-results`
   (`RESULT_SET_TOO_LARGE`) — the page is the one query allowed to touch deleted rows,
   but it still never materializes more than the cap.
