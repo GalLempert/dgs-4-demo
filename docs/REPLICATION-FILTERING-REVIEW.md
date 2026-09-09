@@ -427,3 +427,139 @@ ids and sequences are the values observed.
    an empty page costs 2. A future batch-fetch change should assert the smaller number.
 7. **Plan.** `EXPLAIN` of the page query uses an index on `sequence` once
    recommendation 1 lands.
+
+## Addendum: one statement per page
+
+Question raised after the review: can the feed be a single database query that
+returns the page already split (filtered-out rows as ids only, deleted rows as ids plus
+state, matching live rows in full), on Oracle 12.2, as a native query if JPA cannot
+express it?
+
+First, a correction of the premise. Today's filter is not evaluated in Java.
+`ResourceDal.matchingIds` runs a second SQL statement, `id IN (page ids) AND
+<filter>`, built by the same `FilterSpecificationBuilder` as the list query; Java only
+consults the returned id set. There is no in-memory predicate engine to maintain. What
+the two statements do cost is a second round trip and, under statement-level read
+consistency, a second snapshot.
+
+### Option 1: one statement, verdict computed by the database (prototyped)
+
+JPA Criteria, reusing the builder unchanged:
+
+```java
+CriteriaBuilder cb = em.getCriteriaBuilder();
+CriteriaQuery<Tuple> query = cb.createTupleQuery();
+Root<E> root = query.from(entityType);
+Predicate matches = specificationBuilder.toSpecification(criteria).toPredicate(root, query, cb);
+query.multiselect(root, cb.<Integer>selectCase().when(matches, 1).otherwise(0))
+     .where(cb.gt(root.<Long>get("sequence"), cursor))
+     .orderBy(cb.asc(root.get("sequence")));
+List<Tuple> rows = em.createQuery(query).setMaxResults(bulkSize).getResultList();
+// row.get(0, entityType) is the hydrated entity; row.get(1, Integer.class) == 1 means it matches
+```
+
+Hibernate 5.4 renders it as one statement (H2 dialect shown; `Oracle12cDialect` emits
+`fetch first ? rows only` instead of `limit ?`):
+
+```sql
+select case when person0_.address_city='Berlin' then 1 else 0 end as col_1_0_,
+       person0_.id as id1_1_0_, ... person0_.weight_kg as weight_22_0_
+from person person0_
+where person0_.sequence>3
+order by person0_.sequence asc limit ?
+```
+
+Verified on the leave, enter and delete-while-matching scenario: 1 statement,
+`updated = [One3@Berlin]`, `deleted = [One1@Berlin]`, `filteredOutIds = [5]`,
+`nextSequence = 9`, identical to the two-statement result. The partition code becomes
+"read the flag" instead of "look the id up in a set". One snapshot, one round trip, no
+`IN` list. Note the inlined literals (`'Berlin'`, `3`): on Oracle set
+`hibernate.criteria.literal_handling_mode=BIND` so the SQL text stays identical across
+filter values and cursors and the shared pool does not collect one cursor per poll.
+
+What this option does not do is shrink non-matching rows. Every row of the page is
+hydrated as an entity; only the transfer from database to application is affected, and
+the database reads the full row block either way.
+
+### Option 2: sparse projection (the split inside one rectangular result)
+
+A SQL result set has one column list, so "already split" means NULL where a row
+carries no data:
+
+```sql
+SELECT id, sequence, deleted, version, updated_at, matches,
+       CASE WHEN matches = 1 AND deleted = 0 THEN first_name END AS first_name,
+       -- one CASE per business column
+FROM (SELECT p.*, CASE WHEN <filter> THEN 1 ELSE 0 END AS matches
+      FROM person p
+      WHERE p.sequence > :cursor
+      ORDER BY p.sequence
+      FETCH FIRST :bulk ROWS ONLY) page
+```
+
+The inner query stops after `bulk` rows on the `sequence` index and computes the
+verdict once; the outer projection blanks the columns of filtered-out rows and of
+tombstones. Verified shape (H2 accepts the same SQL): filtered-out
+`{ID=5, MATCHES=0, FIRST_NAME=null}`, tombstone
+`{ID=4, DELETED=true, MATCHES=1, FIRST_NAME=null}`, live match
+`{ID=6, MATCHES=1, FIRST_NAME=One3, ADDRESS_CITY=Berlin}`.
+
+Costs: the projection must enumerate every column (the JPA metamodel can drive it,
+embedded attributes included); the result is a `Tuple`, not an entity, so the view is
+built by hand instead of through `DeclarativeMapper`; collections (`phoneNumbers`,
+`hobbies`) cannot ride in a flat row at all. Written as native SQL it also needs a
+second renderer for the filter (SQL text plus binds) next to the Criteria one, which is
+exactly the duplicate filtering capability to avoid. With Criteria it stays one
+evaluator: per column,
+`cb.selectCase().when(cb.and(matches, cb.isFalse(root.get("deleted"))), root.get(attr)).otherwise(cb.nullLiteral(type))`.
+Worth it only if the transfer of non-matching rows is measurable: roughly
+(1 − selectivity) × bulkSize × row size per page, about 30 KB for 95 rows of 300 bytes.
+
+### Option 3: one round trip, three result sets (Oracle only)
+
+An anonymous PL/SQL block or a procedure that opens three cursors over the same page
+(a `WITH page AS (…)` subquery, or a global temporary table) and returns them with
+`DBMS_SQL.RETURN_RESULT`; the 12c JDBC driver reads them with `getMoreResults()`.
+Literally "already split", with three different shapes. Costs: native SQL, so a second
+filter renderer; three statements inside the block, so consistency needs a READ ONLY
+transaction or `AS OF SCN`; Oracle only. Not recommended over options 1 and 2.
+
+### Collections
+
+No flat statement carries one-to-many data. For Person, load `phoneNumbers` and
+`hobbies` for the matching live ids only, as a batch (`hibernate.default_batch_fetch_size`
+or two explicit `IN` queries): two statements per page, not per row. A row whose
+collection changed between the page read and the collection load has a newer sequence
+and is re-delivered on the next page, so the mismatch is transient; under an Oracle
+READ ONLY transaction it cannot happen at all.
+
+### Consistency between statements on Oracle
+
+Statement-level read consistency is Oracle's default: each statement sees its own
+SCN, so any two-statement design (today's, or "metadata first, then data") has a
+window. Two ways to close it without changing the queries:
+
+- `SET TRANSACTION READ ONLY` gives transaction-level read consistency: every
+  statement in the transaction sees the SCN of the transaction start. Spring's
+  `@Transactional(readOnly = true)` marks the JDBC connection read-only, and Oracle's
+  JDBC driver issues `SET TRANSACTION READ ONLY` for a read-only connection, so
+  `getBySequence` may already be snapshot-consistent on Oracle. Verify on the actual
+  driver: inside a read-only transaction, read a row, commit a change to it from
+  another session, read again, and expect the old value.
+- `AS OF SCN :scn` on each statement, with the SCN read once at the start
+  (`DBMS_FLASHBACK.GET_SYSTEM_CHANGE_NUMBER`). Needs undo retention long enough to
+  cover the request.
+
+On the "duplicate in the following page" concern with a metadata-then-data design: the
+cursor comes from the metadata statement, so a row whose content the data statement
+read at a newer sequence is delivered again on the next page. That is a duplicate
+upsert, harmless because the client operations are idempotent, and impossible under a
+READ ONLY transaction.
+
+### Recommendation
+
+Option 1 now: it removes the round trip, the `IN` list and the snapshot window, keeps
+one filter evaluator, and is a contained change in `ResourceDal` (an
+`EntityManager`-based repository fragment, still layer 3). Add the `sequence` index and
+`literal_handling_mode=BIND` with it. Measure before going to option 2. On Oracle,
+confirm the READ ONLY transaction behavior, which also protects the collection loads.
