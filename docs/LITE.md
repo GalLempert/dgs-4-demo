@@ -48,6 +48,10 @@ com.example.lite.graphql
 └── GraphQLDispatchController @DgsCodeRegistry wiring + request-time dispatch + logging
 ```
 
+For a member-by-member walkthrough of these four classes, the exact startup and
+request sequences, and how they hand over to DGS, see
+[`docs/LITE-INTERNALS.md`](LITE-INTERNALS.md).
+
 There is deliberately no second contract for type fields (the main track's
 `GraphQLFieldResolver`): `parentType()` already says whether the resolver serves
 `Query`, `Mutation`, or a field of an object type like `Person.fullName`.
