@@ -18,6 +18,7 @@ A demo GraphQL service built with **Netflix DGS 4.9.x** / **graphql-java 17** on
 | [docs/UPGRADE-PERFORMANCE.md](docs/UPGRADE-PERFORMANCE.md) | Expected performance impact of Java / Spring Boot / DGS upgrade milestones |
 | [docs/MIGRATION-FROM-GRAPHQL-JAVA-ANNOTATIONS.md](docs/MIGRATION-FROM-GRAPHQL-JAVA-ANNOTATIONS.md) | Migrating an existing code-first graphql-java-annotations service onto this framework: concept map, schema printing, the `DataFetcherAdapters` bridge, verification strategy |
 | [docs/LITE.md](docs/LITE.md) | The lite track: `graphql-infrastructure-lite` + two demo services — a bare-minimum DGS replacement for an in-house GraphQL layer (schema load, `/graphql`, dispatch to existing resolvers), with every omission mapped to its full-track version |
+| [docs/LITE-INTERNALS.md](docs/LITE-INTERNALS.md) | Class-by-class internals of `graphql-infrastructure-lite`: every method and data member, the startup and request lifecycles, the verified DGS hand-over points (schema build order, default error rendering), logging and test coverage |
 | [perf-tests/README.md](perf-tests/README.md) | k6 performance suite: rationale, scenarios, how to run, measured baseline |
 
 ## Module layout — infrastructure vs. domain
