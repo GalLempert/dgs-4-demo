@@ -45,38 +45,128 @@ Versions are owned by the parent POM (DGS BOM manages graphql-java; see the
 
 ### 1.2 The two lifecycles the module implements
 
-**Startup** (once, while DGS builds the executable schema):
+The diagrams in this document are Mermaid; GitHub, IntelliJ and VS Code render
+them inline.
 
-```
-Spring context refresh
-  └─ GraphQLResolverRegistry(List<GraphQLResolver>)          ① index every resolver bean by "Parent.field"
-       └─ throws IllegalStateException on a duplicate coordinate → boot fails
-  └─ GraphQLDispatchController(registry)                      ② plain constructor injection
-DGS DgsSchemaProvider.schema()
-  ├─ finds classpath*:schema/**/*.graphql*, parses + merges them
-  ├─ registers DGS-native things (@DgsScalar, @DgsDirective, @DgsData, @DgsTypeResolver)
-  └─ calls every @DgsCodeRegistry method on every @DgsComponent bean
-       └─ GraphQLDispatchController.registerResolvers(builder, typeRegistry)   ③
-            for each resolver:
-              verifyFieldExistsInSchema  → IllegalStateException on a typo → boot fails
-              codeRegistryBuilder.dataFetcher(coords, env -> dispatch(resolver, env))
-              log.info("Registered GraphQL resolver 'Query.personById' -> ...")
+**Startup** happens once, while DGS builds the executable schema. The lite module
+takes part twice: when Spring constructs the registry (duplicate check) and when
+DGS calls the controller's `@DgsCodeRegistry` hook (schema check + wiring).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Spring as Spring context
+    participant Reg as GraphQLResolverRegistry
+    participant Ctl as GraphQLDispatchController
+    participant DGS as DGS DgsSchemaProvider
+    participant Builder as graphql-java GraphQLCodeRegistry.Builder
+
+    Spring->>Reg: new GraphQLResolverRegistry(List of every GraphQLResolver bean)
+    Note over Reg: index by "Parent.field"<br/>duplicate coordinate: IllegalStateException, boot fails
+    Spring->>Ctl: new GraphQLDispatchController(registry)
+    Spring->>DGS: create schema bean
+    DGS->>DGS: find classpath*:schema/**/*.graphql*, parse, merge
+    DGS->>Builder: newCodeRegistry()
+    DGS->>DGS: register @DgsScalar, @DgsDirective, @DgsData, @DgsTypeResolver
+    DGS->>Ctl: registerResolvers(builder, typeDefinitionRegistry)
+    loop every resolver, in registry order
+        Ctl->>Ctl: verifyFieldExistsInSchema(typeDefinitionRegistry, resolver)
+        Note over Ctl: unknown coordinate: IllegalStateException, boot fails
+        Ctl->>Builder: dataFetcher(coordinates, env -> dispatch(resolver, env))
+        Ctl->>Ctl: log INFO "Registered GraphQL resolver 'Query.personById' -> ..."
+    end
+    Ctl-->>DGS: builder
+    DGS->>DGS: makeExecutableSchema, /graphql goes live
 ```
 
-**Request** (per field, per request, on DGS's execution threads):
+**Request time** repeats per field, per request, on DGS's execution threads. The
+lite module is one hop between graphql-java and your resolver: the lambda it
+registered at startup, which logs and delegates.
 
-```
-POST /graphql  →  DGS  →  graphql-java execution
-  └─ for each selected field with a registered fetcher:
-       lambda registered in ③
-         └─ GraphQLDispatchController.dispatch(resolver, environment)
-              ├─ log (INFO for Query/Mutation fields, DEBUG otherwise)
-              └─ resolver.resolve(environment)
-                   └─ your code (a GraphQLResolver implementation, or the wrapped DataFetcher)
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant DGS as DGS /graphql endpoint
+    participant GJ as graphql-java execution
+    participant Ctl as GraphQLDispatchController
+    participant R as GraphQLResolver
+    participant S as your service / DAL
+
+    C->>DGS: POST /graphql {query, variables}
+    DGS->>GJ: execute
+    GJ->>GJ: parse, validate against schema, coerce arguments
+    loop each selected field that has a registered fetcher
+        GJ->>Ctl: registered lambda -> dispatch(resolver, environment)
+        Ctl->>Ctl: log INFO (Query/Mutation field) or DEBUG (other type field)
+        Ctl->>R: resolve(environment)
+        R->>S: plain method call
+        S-->>R: domain object(s)
+        R-->>GJ: value, passed through unchanged
+        GJ->>GJ: sub-fields: registered fetcher, else PropertyDataFetcher (getter)
+    end
+    alt a resolver threw
+        GJ->>DGS: DefaultDataFetcherExceptionHandler.onException
+        DGS-->>C: errors[] with errorType INTERNAL, that field null
+    else
+        GJ-->>DGS: ExecutionResult
+        DGS-->>C: {"data": ...}
+    end
 ```
 
 That is the complete runtime surface. The rest of this document walks it member by
 member.
+
+### 1.3 The four classes and how they relate
+
+```mermaid
+classDiagram
+    direction LR
+    class GraphQLResolver {
+        <<interface>>
+        +parentType() String
+        +fieldName() String
+        +resolve(DataFetchingEnvironment) Object
+        +description() String
+    }
+    class GraphQLResolvers {
+        <<final utility>>
+        -String QUERY_TYPE
+        -String MUTATION_TYPE
+        +query(fieldName, DataFetcher) GraphQLResolver$
+        +mutation(fieldName, DataFetcher) GraphQLResolver$
+        +field(parentType, fieldName, DataFetcher) GraphQLResolver$
+        -fetcherName(DataFetcher) String$
+    }
+    class GraphQLResolverRegistry {
+        <<@Component>>
+        -Map~String, GraphQLResolver~ resolversByCoordinate
+        +GraphQLResolverRegistry(List~GraphQLResolver~)
+        +resolvers() Collection~GraphQLResolver~
+    }
+    class GraphQLDispatchController {
+        <<@DgsComponent>>
+        -Logger log
+        -GraphQLResolverRegistry resolverRegistry
+        +registerResolvers(Builder, TypeDefinitionRegistry) Builder
+        -dispatch(GraphQLResolver, DataFetchingEnvironment) Object
+        -isRootOperation(GraphQLResolver) boolean$
+        -verifyFieldExistsInSchema(TypeDefinitionRegistry, GraphQLResolver) void
+        -hasField(ObjectTypeDefinition, String) boolean$
+    }
+    class DataFetcher {
+        <<graphql-java interface>>
+        +get(DataFetchingEnvironment) Object
+    }
+    GraphQLResolvers ..> GraphQLResolver : returns anonymous adapter
+    GraphQLResolvers ..> DataFetcher : wraps
+    GraphQLResolverRegistry o-- "0..*" GraphQLResolver : indexes by coordinate
+    GraphQLDispatchController --> GraphQLResolverRegistry : iterates at startup
+    GraphQLDispatchController ..> GraphQLResolver : dispatches to
+```
+
+Only the registry and the controller are beans. `GraphQLResolver` instances are
+beans the *consumer* declares; `GraphQLResolvers` is never instantiated.
 
 ---
 
@@ -696,3 +786,219 @@ The move is mechanical because the method names and the environment-based
 
 Run just the module with `mvn test -pl graphql-infrastructure-lite`, or a consumer
 end to end with `mvn test -pl person-service-lite -am`.
+
+---
+
+## 12. Worked example: the module inside `person-service-lite`
+
+`person-service-lite` (port 8082) is the migration-shaped consumer: five legacy
+`DataFetcher` classes reused unchanged, one native resolver, one computed field, an
+in-memory DAL. This section traces the generic lifecycle of §1.2 through that
+concrete code.
+
+### 12.1 Who depends on whom
+
+```mermaid
+flowchart TB
+    subgraph svc["person-service-lite  (com.example.lite.person)"]
+        direction TB
+        SDL["schema/person-lite.graphqls"]
+        Cfg["PersonLiteGraphQLConfig<br/>6 x @Bean GraphQLResolver"]
+        Cnt["PersonCountResolver<br/>@Component implements GraphQLResolver"]
+        subgraph legacy["legacy DataFetcher classes, unchanged"]
+            direction LR
+            F1["PersonByIdFetcher"]
+            F2["AllPersonsFetcher"]
+            F3["PersonsByCityFetcher"]
+            F4["CreatePersonFetcher"]
+            F5["DeletePersonFetcher"]
+        end
+        Svc["PersonService"]
+        Dal["PersonDal<br/>ConcurrentHashMap + AtomicLong"]
+        Seed["DemoDataLoader<br/>CommandLineRunner"]
+        Cfg -- "new XxxFetcher(service)" --> legacy
+        Cfg -. "Person.fullName lambda" .-> Svc
+        legacy --> Svc
+        Cnt --> Svc
+        Seed -- "3 persons at boot" --> Svc
+        Svc --> Dal
+    end
+    subgraph infra["graphql-infrastructure-lite  (com.example.lite.graphql)"]
+        direction LR
+        Adp["GraphQLResolvers<br/>static adapters"]
+        Reg["GraphQLResolverRegistry<br/>@Component"]
+        Ctl["GraphQLDispatchController<br/>@DgsComponent"]
+        Ctl -- "resolvers()" --> Reg
+    end
+    subgraph dgs["DGS starter"]
+        direction LR
+        Loader["schema loader<br/>classpath*:schema/**/*.graphql*"]
+        Http["POST /graphql, /graphiql"]
+    end
+    Cfg -- "query() / mutation() / field()" --> Adp
+    Cfg -- "6 GraphQLResolver beans" --> Reg
+    Cnt -- "1 GraphQLResolver bean" --> Reg
+    Loader -- "parses" --> SDL
+    Loader -- "@DgsCodeRegistry hook" --> Ctl
+    Http -- "each request" --> Ctl
+```
+
+`PersonLiteApplication` is not drawn: its only role is
+`@SpringBootApplication(scanBasePackages = "com.example.lite")`, which makes Spring
+scan both packages. Two things the diagram makes visible:
+
+- The infrastructure never points at the service. Every arrow into the lite package
+  comes *from* the service (bean declarations) or from DGS.
+- `PersonService` and `PersonDal` have no GraphQL imports. The fetchers and the
+  config lambda are the only code that touches `DataFetchingEnvironment`.
+
+### 12.2 What the registry ends up holding
+
+After `PersonLiteApplication` boots, `GraphQLResolverRegistry.resolversByCoordinate`
+contains exactly these seven entries. Bean order is Spring's, so the insertion order
+below is illustrative.
+
+| Coordinate (map key) | Declared by | Style | `description()` in logs | Calls |
+|---|---|---|---|---|
+| `Query.personById` | `PersonLiteGraphQLConfig.personById` | adapter over legacy class | `adapter of PersonByIdFetcher` | `service.getPerson(long)` after `Long.parseLong(env.getArgument("id"))` |
+| `Query.allPersons` | `PersonLiteGraphQLConfig.allPersons` | adapter over legacy class | `adapter of AllPersonsFetcher` | `service.getAllPersons()` |
+| `Query.personsByCity` | `PersonLiteGraphQLConfig.personsByCity` | adapter over legacy class | `adapter of PersonsByCityFetcher` | `service.getPersonsByCity(env.getArgument("city"))` |
+| `Query.personCount` | `PersonCountResolver` (`@Component`) | native `GraphQLResolver` | `PersonCountResolver` (default `description()`) | `service.countPersons()` |
+| `Mutation.createPerson` | `PersonLiteGraphQLConfig.createPerson` | adapter over legacy class | `adapter of CreatePersonFetcher` | unpacks the `input` map, `service.createPerson(4 strings)` |
+| `Mutation.deletePerson` | `PersonLiteGraphQLConfig.deletePerson` | adapter over legacy class | `adapter of DeletePersonFetcher` | `service.deletePerson(long)` |
+| `Person.fullName` | `PersonLiteGraphQLConfig.personFullName` | adapter over lambda | `adapter of PersonLiteGraphQLConfig lambda` | `service.fullNameOf(env.getSource())` |
+
+The other `Person` fields (`id`, `firstName`, `lastName`, `email`, `city`) have no
+entry: graphql-java reads them from the POJO getters.
+
+### 12.3 Boot, step by step, with the places it can fail
+
+```mermaid
+flowchart TD
+    A["Spring scans com.example.lite:<br/>registry, controller, config, PersonCountResolver, service, DAL"] --> B["Spring calls the 6 @Bean methods in PersonLiteGraphQLConfig<br/>each returns a GraphQLResolvers adapter"]
+    B --> C["new GraphQLResolverRegistry(7 resolvers)"]
+    C --> D{"two beans with the<br/>same Parent.field?"}
+    D -- yes --> X1["IllegalStateException<br/>Two GraphQL resolvers claim the coordinate ...<br/>boot fails"]
+    D -- no --> E["DGS parses schema/person-lite.graphqls"]
+    E --> F{"SDL syntax error?"}
+    F -- yes --> X2["SchemaProblem<br/>boot fails"]
+    F -- no --> G["DGS calls GraphQLDispatchController.registerResolvers"]
+    G --> H{"for each of the 7:<br/>field declared on the type<br/>or in an extend type block?"}
+    H -- no --> X3["IllegalStateException<br/>Resolver ... resolves 'Query.personByld' but no such field is declared<br/>(a typo: l instead of I) boot fails"]
+    H -- yes --> I["dataFetcher(coords, lambda) + INFO log line, 7 times"]
+    I --> J["executable schema built<br/>DemoDataLoader seeds Ada, Alan, Grace<br/>:8082/graphql live"]
+```
+
+The INFO lines you see on a healthy boot, one per registry entry:
+
+```
+Registered GraphQL resolver 'Query.personById' -> adapter of PersonByIdFetcher
+Registered GraphQL resolver 'Query.allPersons' -> adapter of AllPersonsFetcher
+Registered GraphQL resolver 'Query.personsByCity' -> adapter of PersonsByCityFetcher
+Registered GraphQL resolver 'Mutation.createPerson' -> adapter of CreatePersonFetcher
+Registered GraphQL resolver 'Mutation.deletePerson' -> adapter of DeletePersonFetcher
+Registered GraphQL resolver 'Person.fullName' -> adapter of PersonLiteGraphQLConfig lambda
+Registered GraphQL resolver 'Query.personCount' -> PersonCountResolver
+Seeded 3 demo persons
+```
+
+### 12.4 A query with a computed field: `{ allPersons { id fullName } }`
+
+This is the most instructive request because it exercises both kinds of
+coordinate: a root operation (dispatched once, logged at INFO) and a type field
+(dispatched once per row, logged at DEBUG), with a getter-backed field in between.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant GJ as DGS + graphql-java
+    participant Ctl as GraphQLDispatchController
+    participant AP as adapter of AllPersonsFetcher<br/>(Query.allPersons)
+    participant FN as adapter of config lambda<br/>(Person.fullName)
+    participant S as PersonService
+    participant D as PersonDal
+
+    C->>GJ: POST /graphql  { allPersons { id fullName } }
+    GJ->>GJ: parse + validate: allPersons exists, returns [Person!]!
+    GJ->>Ctl: Query.allPersons lambda -> dispatch(resolver, env)
+    Note over Ctl: INFO Received GraphQL operation 'Query.allPersons', dispatching to adapter of AllPersonsFetcher<br/>DEBUG Arguments of 'allPersons': {}
+    Ctl->>AP: resolve(env)
+    AP->>S: getAllPersons()
+    S->>D: findAll()
+    D-->>S: [Person 1, Person 2, Person 3] sorted by id
+    S-->>AP: List<Person>
+    AP-->>GJ: List<Person> (unchanged)
+    loop for each Person in the list
+        GJ->>GJ: id: no fetcher registered -> PropertyDataFetcher -> person.getId() -> "1"
+        GJ->>Ctl: Person.fullName lambda -> dispatch(resolver, env)<br/>env.getSource() is this Person
+        Note over Ctl: DEBUG Resolving field 'Person.fullName' via adapter of PersonLiteGraphQLConfig lambda
+        Ctl->>FN: resolve(env)
+        FN->>S: fullNameOf(person)
+        S-->>FN: "Ada Lovelace"
+        FN-->>GJ: String
+    end
+    GJ-->>C: {"data":{"allPersons":[{"id":"1","fullName":"Ada Lovelace"}, ...]}}
+```
+
+With three seeded persons the controller is entered four times for this one
+request: once for the root field and three times for `fullName`. That is why type
+fields log at DEBUG.
+
+### 12.5 A mutation with an input object: `createPerson`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant GJ as DGS + graphql-java
+    participant Ctl as GraphQLDispatchController
+    participant CP as adapter of CreatePersonFetcher<br/>(Mutation.createPerson)
+    participant S as PersonService
+    participant D as PersonDal
+
+    C->>GJ: mutation { createPerson(input: {firstName:"Linus", lastName:"Torvalds", email:"linus@example.com", city:"Herzliya"}) { id fullName } }
+    GJ->>GJ: validate against input CreatePersonInput (non-null firstName/lastName/email), coerce to Map
+    GJ->>Ctl: Mutation.createPerson lambda -> dispatch(resolver, env)
+    Note over Ctl: INFO Received GraphQL operation 'Mutation.createPerson', dispatching to adapter of CreatePersonFetcher<br/>DEBUG Arguments of 'createPerson': {input={firstName=Linus, ...}}
+    Ctl->>CP: resolve(env)
+    CP->>CP: Map input = env.getArgument("input"), then read the 4 strings
+    CP->>S: createPerson(firstName, lastName, email, city)
+    S->>D: save(new Person(null, ...))
+    D->>D: id = idSequence.incrementAndGet(), then personsById.put(id, person)
+    D-->>S: Person 4
+    S-->>CP: Person
+    CP-->>GJ: Person (unchanged)
+    GJ->>GJ: id via getter, fullName via the Person.fullName resolver exactly as in 12.4
+    GJ-->>C: {"data":{"createPerson":{"id":"4","fullName":"Linus Torvalds"}}}
+```
+
+Where the lite track stops and the GraphQL type system takes over: a request
+omitting `email` is rejected by graphql-java *before* the controller runs, because
+the schema marks it `String!`. A request with a syntactically valid but
+business-invalid email reaches `CreatePersonFetcher` untouched, because there is
+no JSON-schema validation step (compare the full track, `docs/ARCHITECTURE.md`).
+
+### 12.6 The same request when something throws
+
+If `PersonDal.findAll()` threw `IllegalStateException("store offline")` during
+the query in 12.4, the path would be: DAL -> service -> `AllPersonsFetcher.get`
+-> adapter `resolve` -> controller `dispatch` -> registered lambda -> graphql-java,
+with no `catch` anywhere in the lite module. graphql-java hands the exception to
+DGS's default handler, which logs it at ERROR and renders:
+
+```json
+{
+  "errors": [{
+    "message": "java.lang.IllegalStateException: store offline",
+    "path": ["allPersons"],
+    "extensions": { "errorType": "INTERNAL" }
+  }],
+  "data": null
+}
+```
+
+`data` is `null` rather than `{"allPersons": null}` because `allPersons` is
+declared `[Person!]!`: the null propagates up to the nearest nullable ancestor,
+which is the root. See §7 for the full mapping and the remedies.
+
